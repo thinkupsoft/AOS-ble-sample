@@ -1,0 +1,2 @@
+include ':blesample', ':connectivity'
+rootProject.name='blesample'

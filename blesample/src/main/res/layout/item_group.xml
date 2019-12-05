@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="4"
+        android:orientation="horizontal">
+
+    <TextView
+            android:id="@+id/groupName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingTop="16dp"
+            tools:text="Group A" />
+
+    <TextView
+            android:id="@+id/groupAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/groupName"
+            android:paddingStart="16dp"
+            android:paddingBottom="16dp"
+            tools:text="AA:BB:CC:DD" />
+
+    <TextView
+            android:id="@+id/groupModels"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/groupAddress"
+            android:paddingStart="16dp"
+            android:paddingBottom="16dp"
+            tools:text="AA:BBCC:DD" />
+
+    <Button
+            android:id="@+id/groupDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="16dp"
+            android:text="Delete"
+            android:textAlignment="center"
+            android:textColor="@color/neutral"
+            android:visibility="visible" />
+
+    <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/groupNodes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/groupModels" />
+
+    <Button
+            android:id="@+id/groupTtl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/groupNodes"
+            android:layout_toStartOf="@+id/groupStatus"
+            android:text="Get ttl" />
+
+    <Button
+            android:id="@+id/groupStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/groupNodes"
+            android:layout_toStartOf="@+id/groupSubscribe"
+            android:text="Get status" />
+    <Button
+            android:id="@+id/groupSubscribe"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/groupNodes"
+            android:layout_alignParentEnd="true"
+            android:text="Add node" />
+
+
+</RelativeLayout>
