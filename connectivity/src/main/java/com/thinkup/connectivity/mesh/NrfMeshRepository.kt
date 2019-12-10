@@ -12,6 +12,10 @@ import androidx.lifecycle.MutableLiveData
 import com.thinkup.connectivity.common.Status
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
 import com.thinkup.connectivity.messges.config.NodeConfigMessageStatus
+import com.thinkup.connectivity.messges.control.NodeControlMessage
+import com.thinkup.connectivity.messges.control.NodeControlMessageStatus
+import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessage
+import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
 import com.thinkup.connectivity.messges.status.NodeGetMessage
 import com.thinkup.connectivity.messges.status.NodeGetMessageStatus
 import com.thinkup.connectivity.provisioning.ProvisioningStatusLiveData
@@ -874,13 +878,19 @@ class NrfMeshRepository(
         var status: VendorModelMessageStatus? = null
         if (node != null) {
             when (original) {
-                is NodeGetMessage -> {
+                is NodeGetMessage -> { // Status message
                     status = NodeGetMessageStatus(accessMessage, original.modelIdentifier)
                 }
-                is NodeConfigMessage -> {
+                is NodeConfigMessage -> { // Configuration node message
                     status = NodeConfigMessageStatus(accessMessage, original.modelIdentifier)
                 }
-                is VendorModelMessageStatus -> {
+                is NodeControlMessage -> { // Control message
+                    status = NodeControlMessageStatus(accessMessage, original.modelIdentifier)
+                }
+                is NodePeripheralMessage -> { // set peripheral message
+                    status = NodePeripheralMessageStatus(accessMessage, original.modelIdentifier)
+                }
+                is VendorModelMessageStatus -> { // Standard or unknown message
                     status = defaultVendorMessage(src, original, accessMessage)
                 }
             }

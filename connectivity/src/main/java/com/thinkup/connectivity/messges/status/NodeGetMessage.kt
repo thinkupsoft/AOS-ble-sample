@@ -10,6 +10,4 @@ import no.nordicsemi.android.meshprovisioner.transport.VendorModelMessageUnacked
 import no.nordicsemi.android.meshprovisioner.utils.SecureUtils
 
 class NodeGetMessage(appKey: ApplicationKey, modelId: Int, compId: Int, params: ByteArray = byteArrayOf()) :
-    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_GET, params) {
-
-}
+    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_GET, params)

@@ -70,8 +70,7 @@ class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         node: ProvisionedMeshNode,
         id: Int = NO_CONFIG,
         timeoutConfig: Int = NO_CONFIG,
-        timeout: Int = NO_CONFIG,
-        flow: Int = NO_CONFIG
+        timeout: Int = NO_CONFIG
     ) {
         val element: Element? = getElement(node)
         if (element != null) {
@@ -79,7 +78,7 @@ class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
             if (model != null) {
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
-                    sendMessage(node, NodeConfigMessage(id, timeoutConfig, timeout, flow, appKey, model.modelId, model.companyIdentifier))
+                    sendMessage(node, NodeConfigMessage(id, timeoutConfig, timeout, appKey, model.modelId, model.companyIdentifier))
                 }
             }
         }

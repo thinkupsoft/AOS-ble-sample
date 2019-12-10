@@ -2,13 +2,17 @@ package com.thinkup.blesample.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.lifecycle.Observer
 import com.google.android.material.tabs.TabLayout
 import com.thinkup.blesample.R
-import com.thinkup.connectivity.messges.ConfigParams
-import com.thinkup.connectivity.messges.ControlParams
-import com.thinkup.connectivity.messges.NO_CONFIG
-import com.thinkup.connectivity.messges.PeripheralParams
+import com.thinkup.blesample.Utils
+import com.thinkup.connectivity.messges.*
+import com.thinkup.connectivity.messges.config.NodeConfigMessageStatus
+import com.thinkup.connectivity.messges.control.NodeControlMessageStatus
+import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
+import com.thinkup.connectivity.messges.status.NodeGetMessageStatus
 import com.thinkup.connectivity.nodes.NodesViewModel
 import kotlinx.android.synthetic.main.activity_node_detail.*
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
@@ -46,15 +50,12 @@ class NodeDetailActivity : AppCompatActivity() {
         startConnection()
 
         node = intent.getParcelableExtra(NODE)
+        startUI()
 
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabReselected(p0: TabLayout.Tab?) {
+            override fun onTabReselected(p0: TabLayout.Tab?) {}
 
-            }
-
-            override fun onTabUnselected(p0: TabLayout.Tab?) {
-
-            }
+            override fun onTabUnselected(p0: TabLayout.Tab?) {}
 
             override fun onTabSelected(p0: TabLayout.Tab?) {
                 p0?.let {
@@ -80,6 +81,36 @@ class NodeDetailActivity : AppCompatActivity() {
         startControl()
         startConfig()
         startPeripheral()
+        messages()
+    }
+
+    private fun messages() {
+        nodesViewModel.getMessages().observe(this, Observer {
+            when{
+                it is NodeControlMessageStatus -> {controlResponse.text = it.toString()}
+                it is NodeConfigMessageStatus -> {configResponse.text = it.toString()}
+                it is NodePeripheralMessageStatus -> {periferalResponse.text = it.toString()}
+                it is NodeGetMessageStatus -> { Toast.makeText(this, it.toString(), Toast.LENGTH_LONG).show()}
+            }
+        })
+    }
+
+    private fun startUI() {
+        // Config
+        timeout.minValue = 0
+        timeout.maxValue = 10
+        timeout.wrapSelectorWheel = true
+
+        // Peripheral
+        val shapesArray = Utils.getAttrs(ShapeParams.javaClass)
+        shape.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, shapesArray)
+        val colorsArray = Utils.getAttrs(ColorParams.javaClass)
+        color.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, colorsArray)
+        val dimmerValues = (0x00..0x64).toList().map { it.toString() }
+        dimmer.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, dimmerValues)
+        sound.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, arrayOf("NO_SOUND", "BIP_START", "BIP_HIT", "BIP_START_HIT"))
+        led.adapter =
+            ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, arrayOf("LED_PERMANENT", "LED_FLICKER", "LED_FLASH", "LED_FAST_FLASH"))
     }
 
     private fun startBase() {
@@ -98,9 +129,31 @@ class NodeDetailActivity : AppCompatActivity() {
 
     private fun startPeripheral() {
         periferalSet.setOnClickListener {
+            val selShape = Utils.getValue(ShapeParams.javaClass, shape.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val selColor = Utils.getValue(ColorParams.javaClass, color.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val selLed = Utils.getValue(PeripheralParams.javaClass, led.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val selSound = Utils.getValue(PeripheralParams.javaClass, sound.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val fill: Int = when (fillGroup.checkedRadioButtonId) {
+                R.id.solid -> PeripheralParams.FILL
+                else -> PeripheralParams.STROKE
+            }
+            val gesture: Int = when (gestureGroup.checkedRadioButtonId) {
+                R.id.hover -> PeripheralParams.HOVER
+                R.id.touch -> PeripheralParams.TOUCH
+                else -> PeripheralParams.BOTH
+            }
+            val distance: Int = when (distanceGroup.checkedRadioButtonId) {
+                R.id.high -> PeripheralParams.HIGH
+                R.id.medium -> PeripheralParams.MIDDLE
+                else -> PeripheralParams.LOW
+            }
+            val filter: Int = when (filterGroup.checkedRadioButtonId) {
+                R.id.sunny -> PeripheralParams.SUN
+                else -> PeripheralParams.INDOOR
+            }
             nodesViewModel.setPeripheralMessage(
-                node!!, PeripheralParams.CIRCLE, PeripheralParams.COLOR_BLUE, 0x40, PeripheralParams.LED_PERMANENT, PeripheralParams.FILL,
-                PeripheralParams.HOVER, PeripheralParams.MIDDLE, PeripheralParams.INDOOR, NO_CONFIG, PeripheralParams.BIP_START_HIT
+                node!!, selShape, selColor, dimmer.selectedItem.toString().toInt(), selLed, fill,
+                gesture, distance, filter, NO_CONFIG, selSound
             )
         }
     }
@@ -109,9 +162,9 @@ class NodeDetailActivity : AppCompatActivity() {
         configSet.setOnClickListener {
             nodesViewModel.configMessage(
                 node!!,
-                timeoutConfig = ConfigParams.TIMEOUT_CONFIG,
-                timeout = 5,
-                flow = ConfigParams.ON
+                id = if (nodeIdText.text.toString().isNullOrEmpty()) NO_CONFIG else nodeIdText.text.toString().toInt(),
+                timeoutConfig = if (timeout.value == 0) NO_CONFIG else ConfigParams.TIMEOUT_CONFIG,
+                timeout = timeout.value
             )
         }
     }

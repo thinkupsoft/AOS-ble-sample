@@ -1,6 +1,8 @@
 package com.thinkup.connectivity.messges
 
 object OpCodes {
+    var TRANSACTION_ID = 0x00
+
     // client
     const val NT_OPCODE_CTRL = 0xE0
     const val NT_OPCODE_CTRL_UNACKNOWLEDGED = 0xE1
@@ -18,4 +20,10 @@ object OpCodes {
     const val NT_OPCODE_GENERAL_STATUS = 0xD4
 
     fun getOpCode(opCode: Int) = opCode.toShort()
+
+    fun getTransactionId(): Byte {
+        val getter = TRANSACTION_ID
+        TRANSACTION_ID++
+        return getter.toByte()
+    }
 }

@@ -12,12 +12,10 @@ object ControlParams {
 }
 
 object ConfigParams {
-    const val OFF = 0x01
-    const val ON = 0x02
     const val TIMEOUT_CONFIG = 0x01
 }
 
-object PeripheralParams {
+object ShapeParams {
     // SHAPES
     const val TRIANGLE = 0x54
     const val SQUARE = 0x53
@@ -49,11 +47,9 @@ object PeripheralParams {
     const val ARROW_NORTHWEST = 0x46
     const val ARROW_SOUTHEAST = 0x47
     const val ARROW_SOUTHWEST = 0x4E
-    // SOUND
-    const val NO_SOUND = 0x30
-    const val BIP_START = 0x31
-    const val BIP_HIT = 0x32
-    const val BIP_START_HIT = 0x33
+}
+
+object ColorParams {
     // COLORS
     const val COLOR_CUSTOM = 0x01
     const val COLOR_WITHE = 0x42
@@ -63,6 +59,14 @@ object PeripheralParams {
     const val COLOR_YELLOW = 0x59
     const val COLOR_CYAN = 0x43
     const val COLOR_MAGENT = 0x4D
+}
+
+object PeripheralParams {
+    // SOUND
+    const val NO_SOUND = 0x30
+    const val BIP_START = 0x31
+    const val BIP_HIT = 0x32
+    const val BIP_START_HIT = 0x33
     // LED CONFIG
     const val LED_PERMANENT = 0x50
     const val LED_FLICKER = 0x42
@@ -73,9 +77,9 @@ object PeripheralParams {
     const val TOUCH = 0x54
     const val BOTH = 0x42
     // DISTANCE
-    const val LARGE = 0x4C
+    const val HIGH = 0x4C
     const val MIDDLE = 0x4D
-    const val SGORT = 0x53
+    const val LOW = 0x53
     // FILTER
     const val SUN = 0x53
     const val INDOOR = 0x49
@@ -98,4 +102,19 @@ object StatusParams {
     const val HIT = 0xA0
     const val TIMEOUT = 0xA1
     const val LOW_BAT = 0xB0
+}
+
+enum class EventType(val value: Int) {
+    HIT(0xa0),
+    TIMEOUT(0xa1),
+    LOW_BAT(0xb0);
+
+    companion object {
+        fun getType(value: Int): EventType {
+            for (v in values()) {
+                if (v.value == value) return v
+            }
+            return TIMEOUT
+        }
+    }
 }

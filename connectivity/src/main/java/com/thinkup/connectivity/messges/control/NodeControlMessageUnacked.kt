@@ -6,8 +6,8 @@ import no.nordicsemi.android.meshprovisioner.transport.VendorModelMessageAcked
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class NodeControlMessage(private val action: Int, appKey: ApplicationKey, modelId: Int, compId: Int, params: ByteArray = byteArrayOf()) :
-    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_CTRL, params) {
+class NodeControlMessageUnacked(private val action: Int, appKey: ApplicationKey, modelId: Int, compId: Int, params: ByteArray = byteArrayOf()) :
+    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_CTRL_UNACKNOWLEDGED, params) {
 
     init {
         assembleMessageParameters()
@@ -17,7 +17,6 @@ class NodeControlMessage(private val action: Int, appKey: ApplicationKey, modelI
         super.assembleMessageParameters()
         val buffer = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN)
         buffer.put(action.toByte())
-        buffer.put(OpCodes.getTransactionId())
         mParameters = buffer.array()
     }
 }
