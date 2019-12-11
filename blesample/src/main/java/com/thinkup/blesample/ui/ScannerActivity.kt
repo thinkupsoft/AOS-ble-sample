@@ -14,39 +14,38 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.thinkup.blesample.PermissionUtil
 import com.thinkup.blesample.R
 import com.thinkup.blesample.renderers.DeviceRenderer
+import com.thinkup.connectivity.BleProvisioner
+import com.thinkup.connectivity.BleScanner
 import com.thinkup.connectivity.common.Status
-import com.thinkup.connectivity.provisioning.ProvisioningViewModel
 import com.thinkup.connectivity.scanner.ScannerLiveData
-import com.thinkup.connectivity.scanner.ScannerViewModel
 import com.thinkup.connectivity.utils.CapabilitiesUtil
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
 import com.thinkup.easylist.RendererAdapter
-import kotlinx.android.synthetic.main.activity_groups.*
 import kotlinx.android.synthetic.main.activity_scanner.*
 import kotlinx.android.synthetic.main.activity_scanner.connectionStatus
 import kotlinx.android.synthetic.main.activity_scanner.toolbar
-import org.koin.android.viewmodel.ext.android.viewModel
+import org.koin.android.ext.android.inject
 
 class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
 
     private val permissionUtil = PermissionUtil()
     private val capabilitiesUtil = CapabilitiesUtil()
     private val adapter = RendererAdapter()
-    private val scannerViewModel: ScannerViewModel by viewModel()
-    private val provisioningViewModel: ProvisioningViewModel by viewModel()
+    private val bleScanner: BleScanner by inject()
+    private val bleProvisioner: BleProvisioner by inject()
 
     private fun startConnection() {
         toolbar.title = title
-        connectionStatus.text = if (provisioningViewModel.isConnected()?.value == true) "Connected" else "Disconnected"
+        connectionStatus.text = if (bleProvisioner.isConnected()?.value == true) "Connected" else "Disconnected"
         connectionStatus.setOnClickListener {
-            if (provisioningViewModel.isConnected()?.value == true) provisioningViewModel.disconnect()
-            else provisioningViewModel.autoConnect()
+            if (bleProvisioner.isConnected()?.value == true) bleProvisioner.disconnect()
+            else bleProvisioner.autoConnect()
         }
-        provisioningViewModel.isConnected()?.observe(this, Observer {
-            connectionStatus.text = if (provisioningViewModel.isConnected()?.value == true) {
+        bleProvisioner.isConnected()?.observe(this, Observer {
+            connectionStatus.text = if (bleProvisioner.isConnected()?.value == true) {
                 "Connected"
             } else {
-                provisioningViewModel.autoConnect()
+                bleProvisioner.autoConnect()
                 "Disconnected"
             }
         })
@@ -68,12 +67,12 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
 
     override fun onStart() {
         super.onStart()
-        scannerViewModel.getState().startScanning()
+        bleScanner.getState().startScanning()
     }
 
     override fun onStop() {
         super.onStop()
-        scannerViewModel.stop()
+        bleScanner.stop()
     }
 
     private fun prepare() {
@@ -83,11 +82,11 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
     }
 
     private fun load() {
-        scannerViewModel.getState().observe(this, Observer {
+        bleScanner.getState().observe(this, Observer {
             when {
                 !it.isBluetoothEnabled() -> capabilitiesUtil.requestBluetooth(this)
                 !it.isLocationEnabled() -> capabilitiesUtil.requestLocation(this)
-                it.isBluetoothEnabled() && !it.isScanning() -> scannerViewModel.scan()
+                it.isBluetoothEnabled() && !it.isScanning() -> bleScanner.scan()
                 it.isEmpty() -> Toast.makeText(
                     this,
                     "Aún no hay devices",
@@ -96,7 +95,7 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
             }
             if (it.getDevices().isNotEmpty()) setItems(it)
         })
-        scannerViewModel.scan()
+        bleScanner.scan()
     }
 
     private fun setItems(it: ScannerLiveData) {
@@ -125,8 +124,8 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
     }
 
     override fun onConnect(device: ExtendedBluetoothDevice, textView: TextView) {
-        provisioningViewModel.removeOberservers(this)
-        provisioningViewModel.connect(this, this, device).observe(this, Observer {
+        bleProvisioner.getStatus().removeObservers(this)
+        bleProvisioner.connect(this, this, device).observe(this, Observer {
             textView.isClickable = false
             textView.text = it.getValue()
             when (it) {
@@ -135,7 +134,7 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
                 Status.DISCONNECTING -> {
                     textView.setTextColor(ContextCompat.getColor(this, R.color.red))
                     textView.isClickable = true
-                    textView.setOnClickListener { provisioningViewModel.connect(this, this, device) }
+                    textView.setOnClickListener { bleProvisioner.connect(this, this, device) }
                 }
                 Status.NODE_FOUND,
                 Status.CONNECTED,
@@ -152,7 +151,7 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
                 }
                 Status.READY -> {
                     textView.text = "Provision"
-                    provisioningViewModel.provisioningAction(this)
+                    bleProvisioner.provisioningAction(this)
                 }
                 else -> {
                     textView.setTextColor(ContextCompat.getColor(this, R.color.neutral))

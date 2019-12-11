@@ -20,7 +20,7 @@ class ExtendedBluetoothDevice(
         return device.address == scanResult.device.address
     }
 
-    fun rssiPercentage() = (100.0f * (127.0f + rssi) / (127.0f + 20.0f)) as Int
+    fun rssiPercentage() = (100.0f * (127.0f + rssi) / (127.0f + 20.0f)).toInt()
 
     fun getAddress() = device.address
 

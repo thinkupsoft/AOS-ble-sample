@@ -9,7 +9,8 @@ import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.thinkup.blesample.R
 import com.thinkup.blesample.renderers.GroupRenderer
-import com.thinkup.connectivity.groups.GroupViewModel
+import com.thinkup.connectivity.BleGroup
+import com.thinkup.connectivity.impl.BleGroupImpl
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_groups.*
 import no.nordicsemi.android.meshprovisioner.Group
@@ -17,12 +18,13 @@ import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.ConfigModelSubscriptionStatus
 import no.nordicsemi.android.meshprovisioner.transport.MeshModel
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
+import org.koin.android.ext.android.inject
 import org.koin.android.viewmodel.ext.android.viewModel
 
 class GroupsActivity : AppCompatActivity(), GroupRenderer.Callback {
 
     val adapter = RendererAdapter()
-    val viewModel: GroupViewModel by viewModel()
+    val viewModel: BleGroup by inject()
     var char = 'A'
 
     private fun startConnection() {

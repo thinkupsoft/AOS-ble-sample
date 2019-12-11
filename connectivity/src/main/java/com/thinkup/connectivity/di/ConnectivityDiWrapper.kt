@@ -1,24 +1,27 @@
 package com.thinkup.connectivity.di
 
-import com.thinkup.connectivity.groups.GroupViewModel
+import com.thinkup.connectivity.BleGroup
+import com.thinkup.connectivity.BleNode
+import com.thinkup.connectivity.BleProvisioner
+import com.thinkup.connectivity.BleScanner
+import com.thinkup.connectivity.impl.BleGroupImpl
 import com.thinkup.connectivity.mesh.BleMeshManager
 import com.thinkup.connectivity.mesh.NrfMeshRepository
-import com.thinkup.connectivity.nodes.NodesViewModel
-import com.thinkup.connectivity.provisioning.ProvisioningViewModel
+import com.thinkup.connectivity.impl.BleNodeImpl
+import com.thinkup.connectivity.impl.BleProvisionerImpl
 import com.thinkup.connectivity.scanner.ScannerRepository
-import com.thinkup.connectivity.scanner.ScannerViewModel
+import com.thinkup.connectivity.impl.BleScannerImpl
 import com.thinkup.connectivity.utils.CapabilitiesUtil
-import no.nordicsemi.android.ble.BleManager
 import no.nordicsemi.android.meshprovisioner.MeshManagerApi
 import org.koin.dsl.module
 
 object ConnectivityDiWrapper {
 
-    fun viewModelsModule() = module {
-        factory { ScannerViewModel(get()) }
-        factory { ProvisioningViewModel(get(), get()) }
-        factory { NodesViewModel(get(), get()) }
-        factory { GroupViewModel(get(), get()) }
+    fun implModule() = module {
+        factory<BleScanner> { BleScannerImpl(get()) }
+        factory<BleProvisioner> { BleProvisionerImpl(get(), get()) }
+        factory<BleNode> { BleNodeImpl(get(), get()) }
+        factory<BleGroup> { BleGroupImpl(get(), get()) }
     }
 
     fun repositoriesModule() = module {

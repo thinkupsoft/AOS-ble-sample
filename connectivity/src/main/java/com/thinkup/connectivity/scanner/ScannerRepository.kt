@@ -42,15 +42,13 @@ class ScannerRepository(
                     }
                 } else if (filterUuid == Constants.MESH_PROXY_UUID) {
                     val serviceData = Utils.getServiceData(result, Constants.MESH_PROXY_UUID)
-                    if (meshManagerApi != null) {
-                        if (meshManagerApi.isAdvertisingWithNetworkIdentity(serviceData)) {
-                            if (meshManagerApi.networkIdMatches(networkId!!, serviceData)) {
-                                updateScannerLiveData(result)
-                            }
-                        } else if (meshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
-                            if (checkIfNodeIdentityMatches(serviceData)) {
-                                updateScannerLiveData(result)
-                            }
+                    if (meshManagerApi.isAdvertisingWithNetworkIdentity(serviceData)) {
+                        if (meshManagerApi.networkIdMatches(networkId!!, serviceData)) {
+                            updateScannerLiveData(result)
+                        }
+                    } else if (meshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
+                        if (checkIfNodeIdentityMatches(serviceData)) {
+                            updateScannerLiveData(result)
                         }
                     }
                 }
@@ -169,9 +167,9 @@ class ScannerRepository(
         }
 
         if (this.filterUuid == Constants.MESH_PROXY_UUID) {
-            val network = meshManagerApi!!.meshNetwork
+            val network = meshManagerApi.meshNetwork
             if (network != null) {
-                if (!network.netKeys.isEmpty()) {
+                if (network.netKeys.isNotEmpty()) {
                     networkId = meshManagerApi.generateNetworkId(network.netKeys[0].key)
                 }
             }
@@ -214,7 +212,7 @@ class ScannerRepository(
      * @return true if the node identity matches or false otherwise
      */
     private fun checkIfNodeIdentityMatches(serviceData: ByteArray?): Boolean {
-        val network = meshManagerApi!!.meshNetwork
+        val network = meshManagerApi.meshNetwork
         if (network != null && serviceData != null) {
             for (node in network.nodes) {
                 if (meshManagerApi.nodeIdentityMatches(node, serviceData)) {

@@ -1,13 +1,16 @@
-package com.thinkup.connectivity.provisioning
+package com.thinkup.connectivity.impl
 
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
-import com.thinkup.connectivity.common.BaseBleViewModel
+import com.thinkup.connectivity.BleProvisioner
+import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.common.Status
 import com.thinkup.connectivity.mesh.NrfMeshRepository
+import com.thinkup.connectivity.messges.NO_CONFIG
+import com.thinkup.connectivity.messges.config.NodeConfigMessage
+import com.thinkup.connectivity.provisioning.ProvisioningStatusLiveData
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
 import com.thinkup.connectivity.utils.ProvisionerStates
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
@@ -16,32 +19,33 @@ import no.nordicsemi.android.meshprovisioner.Provisioner
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.provisionerstates.UnprovisionedMeshNode
 import no.nordicsemi.android.meshprovisioner.transport.*
+import no.nordicsemi.android.meshprovisioner.utils.MeshParserUtils
 
-class ProvisioningViewModel(context: Context, repository: NrfMeshRepository) : BaseBleViewModel(context, repository) {
+class BleProvisionerImpl(context: Context, repository: NrfMeshRepository) : BaseBleImpl(context, repository), BleProvisioner {
 
     init {
         status = repository.getConnectionState()
     }
 
-    fun removeOberservers(lco: LifecycleOwner) = status.removeObservers(lco)
+    override fun getStatus(): LiveData<Status> = status
 
-    fun connect(
-        lco: LifecycleOwner,
+    override fun connect(
+        lifecycleOwner: LifecycleOwner,
         context: Context,
         device: ExtendedBluetoothDevice,
-        connectToNetwork: Boolean = false
+        connectToNetwork: Boolean
     ): LiveData<Status> {
         repository.getMeshNetworkLiveData().resetSelectedAppKey()
-        deviceReady(lco, device)
+        deviceReady(lifecycleOwner, device)
         repository.connect(context, device, connectToNetwork)
         return status
     }
 
-    private fun deviceReady(lco: LifecycleOwner, device: ExtendedBluetoothDevice) {
-        repository.isDeviceReady().observe(lco, Observer {
+    private fun deviceReady(lifecycleOwner: LifecycleOwner, device: ExtendedBluetoothDevice) {
+        repository.isDeviceReady().observe(lifecycleOwner, Observer {
             if (repository.getBleMeshManager().isDeviceReady()) {
                 if (!repository.isProvisioningComplete()) {
-                    identifyAction(lco, device)
+                    identifyAction(lifecycleOwner, device)
                 } else {
                     status.postValue(Status.PROVISIONING_COMPLETE)
                 }
@@ -49,15 +53,15 @@ class ProvisioningViewModel(context: Context, repository: NrfMeshRepository) : B
         })
     }
 
-    private fun identifyAction(lco: LifecycleOwner, device: ExtendedBluetoothDevice) {
+    private fun identifyAction(lifecycleOwner: LifecycleOwner, device: ExtendedBluetoothDevice) {
         device.name = repository.getMeshNetworkLiveData().getNodeName()!!
-        identifyNode(device).observe(lco, Observer { meshNode ->
+        identifyNode(device).observe(lifecycleOwner, Observer { meshNode ->
             meshNode?.let { node ->
                 val capabilities = node.provisioningCapabilities
-                capabilities?.let { capabilities ->
+                capabilities?.let { caps ->
                     repository.getMeshNetworkLiveData().getMeshNetwork()?.let { network ->
-                        val elementCount = capabilities.numberOfElements.toInt()
-                        val provisioner: Provisioner = network.getSelectedProvisioner()
+                        val elementCount = caps.numberOfElements.toInt()
+                        val provisioner: Provisioner = network.selectedProvisioner
                         val unicast: Int = network.nextAvailableUnicastAddress(elementCount, provisioner)
                         network.assignUnicastAddress(unicast)
                         status.postValue(Status.READY)
@@ -67,8 +71,8 @@ class ProvisioningViewModel(context: Context, repository: NrfMeshRepository) : B
         })
     }
 
-    fun provisioningAction(lco: LifecycleOwner) {
-        provisioning().observe(lco, Observer {
+    override fun provisioningAction(lifecycleOwner: LifecycleOwner) {
+        provisioning().observe(lifecycleOwner, Observer {
             when (it.getProvisionerProgress()?.state) {
                 ProvisionerStates.PROVISIONING_START -> status.postValue(Status.PROVISIONING_START)
                 ProvisionerStates.PROVISIONING_COMPLETE -> status.postValue(Status.PROVISIONING_COMPLETE)
@@ -79,8 +83,8 @@ class ProvisioningViewModel(context: Context, repository: NrfMeshRepository) : B
                         val node = repository.getProvisionedMeshNode().value
                         if (node?.elements?.isNotEmpty() == true) {
                             bindNodeKey(node)
-                            repository.getProvisioningState().removeObservers(lco)
-                            bindAppKey(lco, node)
+                            repository.getProvisioningState().removeObservers(lifecycleOwner)
+                            bindAppKey(lifecycleOwner, node)
                         }
                     } else status.postValue(Status.PROVISIONING_PROGRESS)
                 }
@@ -97,16 +101,12 @@ class ProvisioningViewModel(context: Context, repository: NrfMeshRepository) : B
         sendMessage(node, configAppKeyAdd)
     }
 
-    private fun getBindAppKey(): Int {
-        return bindAppKey()[0]?.keyIndex ?: 0
-    }
-
     private fun updateName(node: ProvisionedMeshNode) {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         network?.updateNodeName(node, getNextNameAvailable())
     }
 
-    private fun bindAppKey(lco: LifecycleOwner, meshNode: ProvisionedMeshNode?) {
+    private fun bindAppKey(lifecycleOwner: LifecycleOwner, meshNode: ProvisionedMeshNode?) {
         status.postValue(Status.BINDING_KEY)
         if (meshNode != null) {
             val element: Element? = getElement(meshNode)
@@ -115,12 +115,40 @@ class ProvisioningViewModel(context: Context, repository: NrfMeshRepository) : B
                 if (model != null) {
                     val configModelAppUnbind = ConfigModelAppBind(element.elementAddress, model.modelId, meshNode.addedAppKeys[0].index)
                     sendMessage(meshNode, configModelAppUnbind)
-                    repository.getSelectedModel()?.observe(lco, Observer {
+                    repository.getSelectedModel()?.observe(lifecycleOwner, Observer {
                         updateName(meshNode)
-                        status.postValue(Status.FULL_CONFIGURED)
+                        setPublication(lifecycleOwner, meshNode, element, model)
                     })
                 }
             }
+        }
+    }
+
+    private fun setPublication(lifecycleOwner: LifecycleOwner, meshNode: ProvisionedMeshNode, element: Element, model: MeshModel) {
+        status.postValue(Status.SET_PUBLISH_ADDRESS)
+        getMessages().observe(lifecycleOwner, Observer {
+            if (it is ConfigModelPublicationStatus) {
+                getMessages().removeObservers(lifecycleOwner)
+                configMessage(meshNode, model as VendorModel, meshNode.nodeName.toInt())
+                status.postValue(Status.FULL_CONFIGURED)
+            }
+        })
+        sendMessage(
+            meshNode, ConfigModelPublicationSet(
+                element.elementAddress, "0001".toInt(16), 0, false,
+                0xFF, 0, 0, 1, 1, model.modelId
+            )
+        )
+    }
+
+    private fun configMessage(
+        node: ProvisionedMeshNode,
+        model: VendorModel,
+        id: Int
+    ) {
+        val appKey = getAppKey(model.boundAppKeyIndexes[0])
+        appKey?.let {
+            sendMessage(node, NodeConfigMessage(id, NO_CONFIG, 0, appKey, model.modelId, model.companyIdentifier))
         }
     }
 

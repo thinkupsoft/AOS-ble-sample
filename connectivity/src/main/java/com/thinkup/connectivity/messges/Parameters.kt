@@ -104,10 +104,10 @@ object StatusParams {
     const val LOW_BAT = 0xB0
 }
 
-enum class EventType(val value: Int) {
-    HIT(0xa0),
-    TIMEOUT(0xa1),
-    LOW_BAT(0xb0);
+enum class EventType(val value: Int, val text: String) {
+    HIT(0xa0, "HIT"),
+    TIMEOUT(0xa1, "TIMEOUT"),
+    LOW_BAT(0xb0, "LOW_BATTERY");
 
     companion object {
         fun getType(value: Int): EventType {

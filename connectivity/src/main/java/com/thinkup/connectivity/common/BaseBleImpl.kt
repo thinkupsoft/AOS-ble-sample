@@ -1,10 +1,8 @@
 package com.thinkup.connectivity.common
 
 import android.content.Context
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.*
+import com.thinkup.connectivity.BleConnection
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
 import no.nordicsemi.android.meshprovisioner.Group
@@ -13,23 +11,27 @@ import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
 import no.nordicsemi.android.meshprovisioner.transport.MeshModel
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
-open class BaseBleViewModel(private val context: Context, protected val repository: NrfMeshRepository) : ViewModel() {
+open class BaseBleImpl(private val context: Context, protected val repository: NrfMeshRepository) : BleConnection {
 
     protected var status = MutableLiveData<Status>()
 
-    fun isConnected() = repository.isConnectedToProxy()
+    override fun isConnected() = repository.isConnectedToProxy()
 
-    fun loadNodes(): LiveData<List<ProvisionedMeshNode>> {
+    override fun getProvisionedNodes(): LiveData<List<ProvisionedMeshNode>> {
         return repository.getNodes()
     }
 
-    fun getNodes() = loadNodes().value
+    override fun getNodes() = getProvisionedNodes().value
 
-    fun disconnect() {
+    override fun getGroups(): LiveData<List<Group>> {
+        return repository.getGroups()
+    }
+
+    override fun disconnect() {
         repository.disconnect()
     }
 
-    fun autoConnect(onConnect: (() -> Unit)? = null) {
+    override fun autoConnect(onConnect: (() -> Unit)?) {
         repository.autoConnect(context).observeForever {
             if (repository.getBleMeshManager().isDeviceReady()) onConnect?.invoke()
         }
@@ -39,9 +41,9 @@ open class BaseBleViewModel(private val context: Context, protected val reposito
 
     protected fun getAppKey(index: Int) = repository.getMeshNetworkLiveData().getMeshNetwork()?.getAppKey(index)
 
-    fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage) = sendMessage(node.unicastAddress, message)
+    override fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage) = sendMessage(node.unicastAddress, message)
 
-    fun sendMessage(group: Group, message: MeshMessage) = sendMessage(group.address, message)
+    override fun sendMessage(group: Group, message: MeshMessage) = sendMessage(group.address, message)
 
     private fun sendMessage(unicastAddress: Int, message: MeshMessage) {
         try {
@@ -54,10 +56,12 @@ open class BaseBleViewModel(private val context: Context, protected val reposito
         }
     }
 
-    fun getMessages() = repository.getMeshMessageLiveData()
+    override fun getMessages() = repository.getMeshMessageLiveData()
 
-    fun checkConnectivity(): Boolean {
-        return repository.isConnectedToProxy()?.value ?: false
+    override fun getEvents() = repository.getEventMessageLiveData()
+
+    override fun checkConnectivity(): Boolean {
+        return repository.isConnectedToProxy().value ?: false
     }
 
     protected fun getElement(meshNode: ProvisionedMeshNode): Element? {

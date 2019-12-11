@@ -1,11 +1,12 @@
-package com.thinkup.connectivity.nodes
+package com.thinkup.connectivity.impl
 
 import android.content.Context
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
-import com.thinkup.connectivity.common.BaseBleViewModel
+import com.thinkup.connectivity.BleNode
+import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.NO_CONFIG
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
@@ -15,7 +16,7 @@ import com.thinkup.connectivity.messges.status.NodeGetMessage
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.*
 
-class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleViewModel(context, repository) {
+class BleNodeImpl(context: Context, repository: NrfMeshRepository) : BaseBleImpl(context, repository), BleNode {
 
     private fun resetNode(node: ProvisionedMeshNode): LiveData<MeshMessage?> {
         val configNodeReset = ConfigNodeReset()
@@ -23,10 +24,10 @@ class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         return repository.getMeshMessageLiveData()
     }
 
-    fun delete(lco: LifecycleOwner, node: ProvisionedMeshNode): LiveData<Boolean> {
+    override fun delete(lifecycleOwner: LifecycleOwner, node: ProvisionedMeshNode): LiveData<Boolean> {
         val result = MutableLiveData<Boolean>()
         repository.setSelectedMeshNode(node)
-        resetNode(node).observe(lco, Observer {
+        resetNode(node).observe(lifecycleOwner, Observer {
             if (it !is ConfigNodeResetStatus) result.postValue(false)
             else result.postValue(
                 repository.getMeshNetworkLiveData().getMeshNetwork()?.deleteNode(node) ?: false
@@ -35,7 +36,7 @@ class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         return result
     }
 
-    fun getStatus(node: ProvisionedMeshNode) {
+    override fun getStatus(node: ProvisionedMeshNode) {
         val element: Element? = getElement(node)
         if (element != null) {
             val model = getModel<VendorModel>(element)
@@ -48,12 +49,12 @@ class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         }
     }
 
-    fun getTtl(node: ProvisionedMeshNode) {
+    override fun getTtl(node: ProvisionedMeshNode) {
         val defaultTtlGet = ConfigDefaultTtlGet()
         sendMessage(node, defaultTtlGet)
     }
 
-    fun controlMessage(node: ProvisionedMeshNode, params: Int) {
+    override fun controlMessage(node: ProvisionedMeshNode, params: Int) {
         val element: Element? = getElement(node)
         if (element != null) {
             val model = getModel<VendorModel>(element)
@@ -66,11 +67,11 @@ class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         }
     }
 
-    fun configMessage(
+    override fun configMessage(
         node: ProvisionedMeshNode,
-        id: Int = NO_CONFIG,
-        timeoutConfig: Int = NO_CONFIG,
-        timeout: Int = NO_CONFIG
+        id: Int,
+        timeoutConfig: Int,
+        timeout: Int
     ) {
         val element: Element? = getElement(node)
         if (element != null) {
@@ -84,7 +85,7 @@ class NodesViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         }
     }
 
-    fun setPeripheralMessage(
+    override fun setPeripheralMessage(
         node: ProvisionedMeshNode,
         shape: Int, color: Int, dimmer: Int, led: Int,
         fill: Int, gesture: Int, distance: Int, filter: Int, touch: Int, sound: Int

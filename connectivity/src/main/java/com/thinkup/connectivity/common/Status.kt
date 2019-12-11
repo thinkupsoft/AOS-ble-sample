@@ -17,6 +17,7 @@ enum class Status(private var text: String) {
     PROVISIONING_COMPLETE("Provisioning completed"),
     PROVISIONING_FAILED("Provisioning failed"),
     BINDING_KEY("Binding key..."),
+    SET_PUBLISH_ADDRESS("Setting pusblishing address"),
     FULL_CONFIGURED("Configured successfully");
 
     fun getValue() = text

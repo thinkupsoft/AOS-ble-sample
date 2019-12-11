@@ -1,8 +1,8 @@
-package com.thinkup.connectivity.groups
+package com.thinkup.connectivity.impl
 
 import android.content.Context
-import androidx.lifecycle.LiveData
-import com.thinkup.connectivity.common.BaseBleViewModel
+import com.thinkup.connectivity.BleGroup
+import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.exceptions.AppKeyException
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.status.NodeGetMessage
@@ -11,13 +11,9 @@ import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.*
 import no.nordicsemi.android.meshprovisioner.utils.MeshAddress
 
-class GroupViewModel(context: Context, repository: NrfMeshRepository) : BaseBleViewModel(context, repository) {
+class BleGroupImpl(context: Context, repository: NrfMeshRepository) : BaseBleImpl(context, repository), BleGroup {
 
-    fun getGroups(): LiveData<List<Group>> {
-        return repository.getGroups()
-    }
-
-    fun addGroup(name: String): Boolean {
+    override fun addGroup(name: String): Boolean {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         val newGroup = network?.createGroup(network.selectedProvisioner, name)
         newGroup?.let {
@@ -26,18 +22,18 @@ class GroupViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         return false
     }
 
-    fun removeGroup(group: Group): Boolean {
+    override fun removeGroup(group: Group): Boolean {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         return network?.removeGroup(group) == true
     }
 
-    fun getGroupNodes(group: Group): List<MeshModel> {
+    override fun getGroupNodes(group: Group): List<MeshModel> {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         return network?.getModels(group) ?: listOf()
     }
 
-    fun getStatus(group: Group, model: VendorModel) {
-        val appKey = getAppKey(model?.boundAppKeyIndexes[0] ?: 0)
+    override fun getStatus(group: Group, model: VendorModel) {
+        val appKey = getAppKey(model.boundAppKeyIndexes[0] ?: 0)
         appKey?.let {
             sendMessage(group, NodeGetMessage(appKey, model.modelId, model.companyIdentifier))
         } ?: run {
@@ -45,12 +41,12 @@ class GroupViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         }
     }
 
-    fun getTtl(group: Group) {
+    override fun getTtl(group: Group) {
         val defaultTtlGet = ConfigDefaultTtlGet()
         sendMessage(group, defaultTtlGet)
     }
 
-    fun addGroupNode(group: Group, meshNode: ProvisionedMeshNode?) {
+    override fun addGroupNode(group: Group, meshNode: ProvisionedMeshNode?) {
         // subscription
         if (meshNode != null) {
             val element: Element? = getElement(meshNode)
@@ -67,7 +63,7 @@ class GroupViewModel(context: Context, repository: NrfMeshRepository) : BaseBleV
         }
     }
 
-    fun removeGroupNode(group: Group, model: VendorModel) {
+    override fun removeGroupNode(group: Group, model: VendorModel) {
         val address: Int = group.address
         val meshNode = repository.getSelectedMeshNode()?.value
         if (meshNode != null) {

@@ -2,21 +2,27 @@ package com.thinkup.blesample.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.tabs.TabLayout
 import com.thinkup.blesample.R
 import com.thinkup.blesample.Utils
+import com.thinkup.blesample.renderers.EventRenderer
+import com.thinkup.connectivity.BleNode
 import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.config.NodeConfigMessageStatus
 import com.thinkup.connectivity.messges.control.NodeControlMessageStatus
+import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
 import com.thinkup.connectivity.messges.status.NodeGetMessageStatus
-import com.thinkup.connectivity.nodes.NodesViewModel
+import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_node_detail.*
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
-import org.koin.android.viewmodel.ext.android.viewModel
+import org.koin.android.ext.android.inject
 
 class NodeDetailActivity : AppCompatActivity() {
 
@@ -24,21 +30,23 @@ class NodeDetailActivity : AppCompatActivity() {
         const val NODE = "node"
     }
 
-    val nodesViewModel: NodesViewModel by viewModel()
+    val bleNode: BleNode by inject()
     var node: ProvisionedMeshNode? = null
+    val adapter = RendererAdapter()
+    val list = mutableListOf<NodeEventStatus>()
 
     private fun startConnection() {
         toolbar.title = title
-        connectionStatus.text = if (nodesViewModel.isConnected()?.value == true) "Connected" else "Disconnected"
+        connectionStatus.text = if (bleNode.isConnected()?.value == true) "Connected" else "Disconnected"
         connectionStatus.setOnClickListener {
-            if (nodesViewModel.isConnected()?.value == true) nodesViewModel.disconnect()
-            else nodesViewModel.autoConnect()
+            if (bleNode.isConnected()?.value == true) bleNode.disconnect()
+            else bleNode.autoConnect()
         }
-        nodesViewModel.isConnected()?.observe(this, Observer {
-            connectionStatus.text = if (nodesViewModel.isConnected()?.value == true) {
+        bleNode.isConnected()?.observe(this, Observer {
+            connectionStatus.text = if (bleNode.isConnected()?.value == true) {
                 "Connected"
             } else {
-                nodesViewModel.autoConnect()
+                bleNode.autoConnect()
                 "Disconnected"
             }
         })
@@ -55,22 +63,39 @@ class NodeDetailActivity : AppCompatActivity() {
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabReselected(p0: TabLayout.Tab?) {}
 
-            override fun onTabUnselected(p0: TabLayout.Tab?) {}
+            override fun onTabUnselected(p0: TabLayout.Tab?) {
+                p0?.let {
+                    when (it.position) {
+                        0 -> {
+                            control.visibility = View.GONE
+                        }
+                        1 -> {
+                            config.visibility = View.GONE
+                        }
+                        2 -> {
+                            periferal.visibility = View.GONE
+                        }
+                        3 -> {
+                            events.visibility = View.GONE
+                        }
+                    }
+                }
+            }
 
             override fun onTabSelected(p0: TabLayout.Tab?) {
                 p0?.let {
                     when (it.position) {
                         0 -> {
-                            control.bringToFront()
+                            control.visibility = View.VISIBLE
                         }
                         1 -> {
-                            config.bringToFront()
+                            config.visibility = View.VISIBLE
                         }
                         2 -> {
-                            periferal.bringToFront()
+                            periferal.visibility = View.VISIBLE
                         }
                         3 -> {
-                            events.bringToFront()
+                            events.visibility = View.VISIBLE
                         }
                     }
                 }
@@ -78,6 +103,7 @@ class NodeDetailActivity : AppCompatActivity() {
 
         })
         startBase()
+        startEvent()
         startControl()
         startConfig()
         startPeripheral()
@@ -85,17 +111,31 @@ class NodeDetailActivity : AppCompatActivity() {
     }
 
     private fun messages() {
-        nodesViewModel.getMessages().observe(this, Observer {
-            when{
-                it is NodeControlMessageStatus -> {controlResponse.text = it.toString()}
-                it is NodeConfigMessageStatus -> {configResponse.text = it.toString()}
-                it is NodePeripheralMessageStatus -> {periferalResponse.text = it.toString()}
-                it is NodeGetMessageStatus -> { Toast.makeText(this, it.toString(), Toast.LENGTH_LONG).show()}
+        bleNode.getMessages().observe(this, Observer {
+            when {
+                it is NodeControlMessageStatus -> {
+                    controlResponse.text = it.toString()
+                }
+                it is NodeConfigMessageStatus -> {
+                    configResponse.text = it.toString()
+                }
+                it is NodePeripheralMessageStatus -> {
+                    periferalResponse.text = it.toString()
+                }
+                it is NodeGetMessageStatus -> {
+                    Toast.makeText(this, it.toString(), Toast.LENGTH_LONG).show()
+                }
             }
         })
     }
 
     private fun startUI() {
+        // Events
+        adapter.addRenderer(EventRenderer())
+        eventsList.adapter = adapter
+        eventsList.layoutManager = LinearLayoutManager(this)
+        eventsList.isNestedScrollingEnabled = false
+
         // Config
         timeout.minValue = 0
         timeout.maxValue = 10
@@ -113,18 +153,25 @@ class NodeDetailActivity : AppCompatActivity() {
             ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, arrayOf("LED_PERMANENT", "LED_FLICKER", "LED_FLASH", "LED_FAST_FLASH"))
     }
 
+    private fun startEvent() {
+        bleNode.getEvents().observe(this, Observer {
+            list.add(it)
+            adapter.setItems(list)
+        })
+    }
+
     private fun startBase() {
-        nodeStatus.setOnClickListener { nodesViewModel.getStatus(node!!) }
-        nodeTtl.setOnClickListener { nodesViewModel.getTtl(node!!) }
+        nodeStatus.setOnClickListener { bleNode.getStatus(node!!) }
+        nodeTtl.setOnClickListener { bleNode.getTtl(node!!) }
     }
 
     private fun startControl() {
-        controlStart.setOnClickListener { nodesViewModel.controlMessage(node!!, ControlParams.START) }
-        controlStop.setOnClickListener { nodesViewModel.controlMessage(node!!, ControlParams.STOP) }
-        controlPause.setOnClickListener { nodesViewModel.controlMessage(node!!, ControlParams.PAUSE) }
-        controlLedOn.setOnClickListener { nodesViewModel.controlMessage(node!!, ControlParams.SET_LED_ON) }
-        controlLedOff.setOnClickListener { nodesViewModel.controlMessage(node!!, ControlParams.SET_LED_OFF) }
-        controlRecalibrar.setOnClickListener { nodesViewModel.controlMessage(node!!, ControlParams.RECALIBRAR) }
+        controlStart.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.START) }
+        controlStop.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.STOP) }
+        controlPause.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.PAUSE) }
+        controlLedOn.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_ON) }
+        controlLedOff.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_OFF) }
+        controlRecalibrar.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.RECALIBRAR) }
     }
 
     private fun startPeripheral() {
@@ -151,7 +198,7 @@ class NodeDetailActivity : AppCompatActivity() {
                 R.id.sunny -> PeripheralParams.SUN
                 else -> PeripheralParams.INDOOR
             }
-            nodesViewModel.setPeripheralMessage(
+            bleNode.setPeripheralMessage(
                 node!!, selShape, selColor, dimmer.selectedItem.toString().toInt(), selLed, fill,
                 gesture, distance, filter, NO_CONFIG, selSound
             )
@@ -160,7 +207,7 @@ class NodeDetailActivity : AppCompatActivity() {
 
     private fun startConfig() {
         configSet.setOnClickListener {
-            nodesViewModel.configMessage(
+            bleNode.configMessage(
                 node!!,
                 id = if (nodeIdText.text.toString().isNullOrEmpty()) NO_CONFIG else nodeIdText.text.toString().toInt(),
                 timeoutConfig = if (timeout.value == 0) NO_CONFIG else ConfigParams.TIMEOUT_CONFIG,

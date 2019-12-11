@@ -9,12 +9,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.thinkup.blesample.R
 import com.thinkup.blesample.renderers.DeviceRenderer
 import com.thinkup.blesample.renderers.NodeRenderer
-import com.thinkup.connectivity.nodes.NodesViewModel
+import com.thinkup.connectivity.BleNode
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
-import org.koin.android.viewmodel.ext.android.viewModel
+import org.koin.android.ext.android.inject
 
 class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.Callback {
 
@@ -22,20 +22,20 @@ class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.
     val GROUPS_REQUEST = 101
     val DETAIL_REQUEST = 102
     val adapter = RendererAdapter()
-    val nodesViewModel: NodesViewModel by viewModel()
+    val bleNode: BleNode by inject()
 
     private fun startConnection() {
         toolbar.title = title
-        connectionStatus.text = if (nodesViewModel.isConnected()?.value == true) "Connected" else "Disconnected"
+        connectionStatus.text = if (bleNode.isConnected()?.value == true) "Connected" else "Disconnected"
         connectionStatus.setOnClickListener {
-            if (nodesViewModel.isConnected()?.value == true) nodesViewModel.disconnect()
-            else nodesViewModel.autoConnect()
+            if (bleNode.isConnected()?.value == true) bleNode.disconnect()
+            else bleNode.autoConnect()
         }
-        nodesViewModel.isConnected()?.observe(this, Observer {
-            connectionStatus.text = if (nodesViewModel.isConnected()?.value == true) {
+        bleNode.isConnected()?.observe(this, Observer {
+            connectionStatus.text = if (bleNode.isConnected()?.value == true) {
                 "Connected"
             } else {
-                nodesViewModel.autoConnect()
+                bleNode.autoConnect()
                 "Disconnected"
             }
         })
@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.
     }
 
     private fun updateList() {
-        nodesViewModel.loadNodes().observe(this, Observer {
+        bleNode.getProvisionedNodes().observe(this, Observer {
             adapter.setItems(it)
         })
     }
@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.
     override fun onConnect(device: ExtendedBluetoothDevice, textView: TextView) {}
 
     override fun onDelete(node: ProvisionedMeshNode) {
-        nodesViewModel.delete(this, node)
+        bleNode.delete(this, node)
     }
 
     override fun onClick(node: ProvisionedMeshNode) {
