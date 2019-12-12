@@ -9,7 +9,7 @@ import android.os.ParcelUuid
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.thinkup.connectivity.common.Status
+import com.thinkup.connectivity.provisioning.Status
 import com.thinkup.connectivity.messges.OpCodes
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
 import com.thinkup.connectivity.messges.config.NodeConfigMessageStatus
@@ -52,6 +52,11 @@ class NrfMeshRepository(
         mBleMeshManager.setGattCallbacks(this)
     }
 
+    // Provisioning flow
+    var provisionCallback: ProvisionCallback? = null
+    // Reset Callback
+    var nodeCallback: NodeCallback? = null
+
     private val TAG = NrfMeshRepository::class.java.simpleName
     private val ATTENTION_TIMER = 5
     val EXPORT_PATH =
@@ -64,8 +69,6 @@ class NrfMeshRepository(
     private var mIsConnected: MutableLiveData<Boolean> = MutableLiveData()
     // LiveData to notify when device is ready
     private val mOnDeviceReady = MutableLiveData<Unit>()
-    // Updates the connection state while connecting to a peripheral
-    private val mConnectionState = MutableLiveData<Status>()
     // Flag to determine if a reconnection is in the progress when provisioning has completed
     private val mIsReconnecting: SingleLiveEvent<Boolean?> = SingleLiveEvent()
     private val mUnprovisionedMeshNodeLiveData = MutableLiveData<UnprovisionedMeshNode?>()
@@ -93,7 +96,7 @@ class NrfMeshRepository(
     private val mMeshNetworkLiveData: MeshNetworkLiveData = MeshNetworkLiveData()
     private val mNetworkImportState: SingleLiveEvent<String?> = SingleLiveEvent()
     private val mMeshMessageLiveData: SingleLiveEvent<MeshMessage?> = SingleLiveEvent()
-    private val mEventMessageLiveData: SingleLiveEvent<NodeEventStatus> = SingleLiveEvent()
+    private val mEventMessageLiveData: ComparableSingleLiveData<NodeEventStatus> = ComparableSingleLiveData()
     // Contains the provisioned nodes
     private val mProvisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
     private val mGroups = MutableLiveData<List<Group>>()
@@ -123,13 +126,6 @@ class NrfMeshRepository(
      */
     fun isDeviceReady(): LiveData<Unit> {
         return mOnDeviceReady
-    }
-
-    /**
-     * Returns [SingleLiveEvent] containing the device ready state.
-     */
-    fun getConnectionState(): MutableLiveData<Status> {
-        return mConnectionState
     }
 
     /**
@@ -275,7 +271,6 @@ class NrfMeshRepository(
         mBleMeshManager.logSession = logSession
         val bluetoothDevice: BluetoothDevice = device.device
         initIsConnectedLiveData(connectToNetwork)
-        mConnectionState.postValue(Status.CONNECTING)
         //Added a 1 second delay for connection, mostly to wait for a disconnection to complete before connecting.
         mHandler.postDelayed({
             mBleMeshManager.connect(bluetoothDevice).retry(3, 200).enqueue()
@@ -289,7 +284,6 @@ class NrfMeshRepository(
      */
     private fun connectToProxy(device: ExtendedBluetoothDevice) {
         initIsConnectedLiveData(true)
-        mConnectionState.postValue(Status.CONNECTING)
         mBleMeshManager.connect(device.device).retry(3, 200).enqueue()
     }
 
@@ -454,27 +448,19 @@ class NrfMeshRepository(
     }
 
     override fun onDeviceConnecting(device: BluetoothDevice) {
-        mConnectionState.postValue(Status.CONNECTING)
     }
 
     override fun onDeviceConnected(device: BluetoothDevice) {
         mIsConnected.postValue(true)
-        mConnectionState.postValue(Status.DISCOVERING)
         mIsConnectedToProxy.postValue(true)
     }
 
     override fun onDeviceDisconnecting(device: BluetoothDevice) {
         Log.v(TAG, "Disconnecting...")
-        if (mIsReconnectingFlag) {
-            mConnectionState.postValue(Status.RECONNECTING)
-        } else {
-            mConnectionState.postValue(Status.DISCONNECTING)
-        }
     }
 
     override fun onDeviceDisconnected(device: BluetoothDevice) {
         Log.v(TAG, "Disconnected")
-        mConnectionState.postValue(Status.IDLE)
         if (mIsReconnectingFlag) {
             mIsReconnectingFlag = false
             mIsReconnecting.postValue(false)
@@ -502,11 +488,11 @@ class NrfMeshRepository(
         device: BluetoothDevice,
         optionalServicesFound: Boolean
     ) {
-        mConnectionState.postValue(Status.INITIALIZING)
     }
 
     override fun onDeviceReady(device: BluetoothDevice) {
         mOnDeviceReady.postValue(null)
+        deviceReadyProvision()
         if (mBleMeshManager.isProvisioningComplete()) {
             if (mSetupProvisionedNode) {
                 if (mMeshNetwork!!.selectedProvisioner.provisionerAddress != null) {
@@ -526,6 +512,7 @@ class NrfMeshRepository(
                     mSetupProvisionedNode = false
                     mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.PROVISIONER_UNASSIGNED)
                     clearExtendedMeshNode()
+                    deviceFailProvision()
                 }
             }
             mIsConnectedToProxy.postValue(true)
@@ -546,7 +533,6 @@ class NrfMeshRepository(
             TAG,
             "Error: " + message + " Error Code: " + errorCode + " Device: " + device.address
         )
-        mConnectionState.postValue(Status.getError(message))
     }
 
     override fun onDeviceNotSupported(device: BluetoothDevice) {}
@@ -609,8 +595,17 @@ class NrfMeshRepository(
         mUnprovisionedMeshNode = meshNode
         mUnprovisionedMeshNodeLiveData.postValue(meshNode)
         when (state) {
-            States.PROVISIONING_INVITE -> mProvisioningStateLiveData = ProvisioningStatusLiveData()
-            States.PROVISIONING_FAILED -> mIsProvisioningComplete = false
+            States.PROVISIONING_INVITE -> {
+                identifyProvision(meshNode!!)
+                mProvisioningStateLiveData = ProvisioningStatusLiveData()
+            }
+            States.PROVISIONING_CAPABILITIES -> {
+                identifyProvision(meshNode!!)
+            }
+            States.PROVISIONING_FAILED -> {
+                provisionFail()
+                mIsProvisioningComplete = false
+            }
         }
         mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
     }
@@ -623,6 +618,7 @@ class NrfMeshRepository(
         mUnprovisionedMeshNode = meshNode
         mUnprovisionedMeshNodeLiveData.postValue(meshNode)
         if (state == States.PROVISIONING_FAILED) {
+            provisionFail()
             mIsProvisioningComplete = false
         }
         mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
@@ -637,6 +633,7 @@ class NrfMeshRepository(
         mUnprovisionedMeshNodeLiveData.postValue(null)
         mProvisionedMeshNodeLiveData.postValue(meshNode)
         if (state == States.PROVISIONING_COMPLETE) {
+            provisionComplete(meshNode!!)
             onProvisioningCompleted(meshNode)
         }
         mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
@@ -648,7 +645,6 @@ class NrfMeshRepository(
         mIsReconnecting.postValue(true)
         mBleMeshManager.disconnect().enqueue()
         loadNodes()
-        mHandler.post { mConnectionState.postValue(Status.SCANNING) }
         mHandler.postDelayed(
             mReconnectRunnable,
             1000
@@ -787,6 +783,7 @@ class NrfMeshRepository(
                         mMeshManagerApi.createMeshPdu(node.unicastAddress, networkTransmitSet)
                     }, 1500)
                 }
+                bindNodeKeyComplete(node)
             } else {
                 updateNode(node)
                 mMeshMessageLiveData.postValue(status)
@@ -796,6 +793,7 @@ class NrfMeshRepository(
                 mSetupProvisionedNode = false
                 mIsNetworkRetransmitSetCompleted = true
                 mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.NETWORK_TRANSMIT_STATUS_RECEIVED)
+                provisionComplete(node)
             } else {
                 updateNode(node)
                 mMeshMessageLiveData.postValue(meshMessage)
@@ -809,6 +807,7 @@ class NrfMeshRepository(
                     mSelectedElement.postValue(element)
                     val model = element!!.meshModels[status.modelIdentifier]
                     mSelectedModel.postValue(model)
+                    bindAppKeyComplete(node, element, model!!)
                 }
             }
         } else if (meshMessage is ConfigModelPublicationStatus) {
@@ -821,6 +820,7 @@ class NrfMeshRepository(
                     mSelectedElement.postValue(element)
                     val model = element!!.meshModels[status.modelIdentifier]
                     mSelectedModel.postValue(model)
+                    setPublicationComplete(node, element, model!!)
                 }
             }
         } else if (meshMessage is ConfigModelSubscriptionStatus) {
@@ -840,6 +840,7 @@ class NrfMeshRepository(
             mExtendedMeshNode!!.postValue(null)
             loadNodes()
             mMeshMessageLiveData.postValue(meshMessage)
+            resetNode()
         } else if (meshMessage is ConfigRelayStatus) {
             if (updateNode(node)) {
                 mMeshMessageLiveData.postValue(meshMessage)
@@ -1046,7 +1047,6 @@ class NrfMeshRepository(
                             val node = mProvisionedMeshNode
                             if (mMeshManagerApi.nodeIdentityMatches(node!!, serviceData)) {
                                 stopScan()
-                                mConnectionState.postValue(Status.NODE_FOUND)
                                 onProvisionedDeviceFound(node, ExtendedBluetoothDevice(result))
                             }
                         }
@@ -1074,13 +1074,11 @@ class NrfMeshRepository(
                     if (mMeshManagerApi.isAdvertisingWithNetworkIdentity(serviceData)) {
                         if (mMeshManagerApi.networkIdMatches(networkId, serviceData)) {
                             stopScan()
-                            mConnectionState.postValue(Status.NODE_FOUND)
                             connect(context, ExtendedBluetoothDevice(result), true)
                         }
                     } else if (mMeshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
                         if (checkIfNodeIdentityMatches(serviceData!!)) {
                             stopScan()
-                            mConnectionState.postValue(Status.NODE_FOUND)
                             connect(context, ExtendedBluetoothDevice(result), true)
                         }
                     }

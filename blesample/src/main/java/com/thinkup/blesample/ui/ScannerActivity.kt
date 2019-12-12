@@ -16,7 +16,7 @@ import com.thinkup.blesample.R
 import com.thinkup.blesample.renderers.DeviceRenderer
 import com.thinkup.connectivity.BleProvisioner
 import com.thinkup.connectivity.BleScanner
-import com.thinkup.connectivity.common.Status
+import com.thinkup.connectivity.provisioning.Status
 import com.thinkup.connectivity.scanner.ScannerLiveData
 import com.thinkup.connectivity.utils.CapabilitiesUtil
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
@@ -125,21 +125,18 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
 
     override fun onConnect(device: ExtendedBluetoothDevice, textView: TextView) {
         bleProvisioner.getStatus().removeObservers(this)
-        bleProvisioner.connect(this, this, device).observe(this, Observer {
+        bleProvisioner.connect(this, device).observe(this, Observer {
             textView.isClickable = false
             textView.text = it.getValue()
             when (it) {
                 Status.ERROR,
-                Status.PROVISIONING_FAILED,
-                Status.DISCONNECTING -> {
+                Status.PROVISIONING_FAILED -> {
                     textView.setTextColor(ContextCompat.getColor(this, R.color.red))
                     textView.isClickable = true
-                    textView.setOnClickListener { bleProvisioner.connect(this, this, device) }
+                    textView.setOnClickListener { bleProvisioner.connect(this, device) }
                 }
                 Status.NODE_FOUND,
-                Status.CONNECTED,
-                Status.BINDING_KEY,
-                Status.PROVISIONING_COMPLETE -> {
+                Status.BINDING_KEY -> {
                     textView.setTextColor(ContextCompat.getColor(this, R.color.green))
                 }
                 Status.FULL_CONFIGURED -> {
@@ -149,9 +146,18 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
                         .setPositiveButton("Ok") { p0, p1 -> finish() }
                         .show()
                 }
-                Status.READY -> {
-                    textView.text = "Provision"
-                    bleProvisioner.provisioningAction(this)
+                Status.TIMEOUT -> {
+                    textView.setTextColor(ContextCompat.getColor(this, R.color.red))
+                    textView.isClickable = true
+                    textView.setOnClickListener { bleProvisioner.connect(this, device) }
+                    AlertDialog.Builder(this)
+                        .setMessage("Timeout")
+                        .setOnCancelListener { finish() }
+                        .setPositiveButton("Ok") { p0, p1 ->
+                            bleProvisioner.getStatus().removeObservers(this)
+
+                        }
+                        .show()
                 }
                 else -> {
                     textView.setTextColor(ContextCompat.getColor(this, R.color.neutral))

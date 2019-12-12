@@ -1,38 +1,37 @@
 package com.thinkup.connectivity.impl
 
 import android.content.Context
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
 import com.thinkup.connectivity.BleNode
 import com.thinkup.connectivity.common.BaseBleImpl
+import com.thinkup.connectivity.mesh.NodeCallback
 import com.thinkup.connectivity.mesh.NrfMeshRepository
-import com.thinkup.connectivity.messges.NO_CONFIG
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
 import com.thinkup.connectivity.messges.control.NodeControlMessage
 import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessage
 import com.thinkup.connectivity.messges.status.NodeGetMessage
+import com.thinkup.connectivity.utils.TimeoutLiveData
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.*
 
 class BleNodeImpl(context: Context, repository: NrfMeshRepository) : BaseBleImpl(context, repository), BleNode {
 
-    private fun resetNode(node: ProvisionedMeshNode): LiveData<MeshMessage?> {
+    private fun resetNode(node: ProvisionedMeshNode, result: MutableLiveData<Boolean>) {
+        repository.nodeCallback = object : NodeCallback {
+            override fun onDelete() {
+                result.postValue(true)
+                repository.getMeshNetworkLiveData().getMeshNetwork()?.deleteNode(node) ?: false
+            }
+        }
         val configNodeReset = ConfigNodeReset()
         sendMessage(node, configNodeReset)
-        return repository.getMeshMessageLiveData()
     }
 
-    override fun delete(lifecycleOwner: LifecycleOwner, node: ProvisionedMeshNode): LiveData<Boolean> {
-        val result = MutableLiveData<Boolean>()
+    override fun delete(node: ProvisionedMeshNode): LiveData<Boolean> {
+        val result = TimeoutLiveData(ACTION_TIMEOUT, false)
         repository.setSelectedMeshNode(node)
-        resetNode(node).observe(lifecycleOwner, Observer {
-            if (it !is ConfigNodeResetStatus) result.postValue(false)
-            else result.postValue(
-                repository.getMeshNetworkLiveData().getMeshNetwork()?.deleteNode(node) ?: false
-            )
-        })
+        resetNode(node, result)
         return result
     }
 

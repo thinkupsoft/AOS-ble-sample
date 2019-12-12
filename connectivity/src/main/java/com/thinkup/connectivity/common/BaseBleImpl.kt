@@ -4,16 +4,14 @@ import android.content.Context
 import androidx.lifecycle.*
 import com.thinkup.connectivity.BleConnection
 import com.thinkup.connectivity.mesh.NrfMeshRepository
-import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
+import com.thinkup.connectivity.provisioning.Status
 import no.nordicsemi.android.meshprovisioner.Group
-import no.nordicsemi.android.meshprovisioner.transport.Element
-import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
-import no.nordicsemi.android.meshprovisioner.transport.MeshModel
-import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
+import no.nordicsemi.android.meshprovisioner.transport.*
 
 open class BaseBleImpl(private val context: Context, protected val repository: NrfMeshRepository) : BleConnection {
 
-    protected var status = MutableLiveData<Status>()
+    protected val ACTION_TIMEOUT = 5 * 1000L
+    protected val PROVISION_TIMEOUT = 30 * 1000L
 
     override fun isConnected() = repository.isConnectedToProxy()
 
@@ -45,7 +43,7 @@ open class BaseBleImpl(private val context: Context, protected val repository: N
 
     override fun sendMessage(group: Group, message: MeshMessage) = sendMessage(group.address, message)
 
-    private fun sendMessage(unicastAddress: Int, message: MeshMessage) {
+    protected fun sendMessage(unicastAddress: Int, message: MeshMessage) {
         try {
             if (!checkConnectivity()) autoConnect { sendMessage(unicastAddress, message) }
             else {
@@ -62,6 +60,11 @@ open class BaseBleImpl(private val context: Context, protected val repository: N
 
     override fun checkConnectivity(): Boolean {
         return repository.isConnectedToProxy().value ?: false
+    }
+
+    override fun forceDelete(unicastAddress: Int) {
+        val configNodeReset = ConfigNodeReset()
+        sendMessage(unicastAddress, configNodeReset)
     }
 
     protected fun getElement(meshNode: ProvisionedMeshNode): Element? {

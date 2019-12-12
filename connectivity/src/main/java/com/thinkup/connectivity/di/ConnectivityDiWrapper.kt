@@ -4,13 +4,10 @@ import com.thinkup.connectivity.BleGroup
 import com.thinkup.connectivity.BleNode
 import com.thinkup.connectivity.BleProvisioner
 import com.thinkup.connectivity.BleScanner
-import com.thinkup.connectivity.impl.BleGroupImpl
+import com.thinkup.connectivity.impl.*
 import com.thinkup.connectivity.mesh.BleMeshManager
 import com.thinkup.connectivity.mesh.NrfMeshRepository
-import com.thinkup.connectivity.impl.BleNodeImpl
-import com.thinkup.connectivity.impl.BleProvisionerImpl
 import com.thinkup.connectivity.scanner.ScannerRepository
-import com.thinkup.connectivity.impl.BleScannerImpl
 import com.thinkup.connectivity.utils.CapabilitiesUtil
 import no.nordicsemi.android.meshprovisioner.MeshManagerApi
 import org.koin.dsl.module

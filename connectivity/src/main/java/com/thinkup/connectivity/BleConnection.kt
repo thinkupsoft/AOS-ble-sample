@@ -26,6 +26,8 @@ interface BleConnection {
 
     fun disconnect()
 
+    fun forceDelete(unicastAddress: Int)
+
     // nodes
     fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage)
 

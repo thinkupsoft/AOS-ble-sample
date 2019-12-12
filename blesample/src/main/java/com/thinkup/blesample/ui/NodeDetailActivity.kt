@@ -142,9 +142,9 @@ class NodeDetailActivity : AppCompatActivity() {
         timeout.wrapSelectorWheel = true
 
         // Peripheral
-        val shapesArray = Utils.getAttrs(ShapeParams.javaClass)
+        val shapesArray = Utils.getAttrs(ShapeParams.javaClass).filter { it != "INSTANCE" }
         shape.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, shapesArray)
-        val colorsArray = Utils.getAttrs(ColorParams.javaClass)
+        val colorsArray = Utils.getAttrs(ColorParams.javaClass).filter { it != "INSTANCE" }
         color.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, colorsArray)
         val dimmerValues = (0x00..0x64).toList().map { it.toString() }
         dimmer.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, dimmerValues)

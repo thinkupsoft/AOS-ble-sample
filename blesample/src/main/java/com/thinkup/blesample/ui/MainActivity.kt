@@ -2,7 +2,9 @@ package com.thinkup.blesample.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -11,6 +13,7 @@ import com.thinkup.blesample.renderers.DeviceRenderer
 import com.thinkup.blesample.renderers.NodeRenderer
 import com.thinkup.connectivity.BleNode
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
+import com.thinkup.connectivity.utils.TimeoutLiveData
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
@@ -51,6 +54,13 @@ class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.
         groupsButton.setOnClickListener {
             startActivityForResult(Intent(this, GroupsActivity::class.java), GROUPS_REQUEST)
         }
+        forceDeleteButton.visibility = View.GONE
+        forceDeleteButton.setOnClickListener {
+            //bleNode.forceDelete(2.toInt())
+//            TimeoutLiveData(2000, false).observe(this, Observer {
+//                Toast.makeText(this, "Get: ${it}", Toast.LENGTH_SHORT).show()
+//            })
+        }
 
         provisionedNodes.layoutManager = LinearLayoutManager(this)
         provisionedNodes.adapter = adapter
@@ -67,7 +77,7 @@ class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.
     override fun onConnect(device: ExtendedBluetoothDevice, textView: TextView) {}
 
     override fun onDelete(node: ProvisionedMeshNode) {
-        bleNode.delete(this, node)
+        bleNode.delete(node)
     }
 
     override fun onClick(node: ProvisionedMeshNode) {
