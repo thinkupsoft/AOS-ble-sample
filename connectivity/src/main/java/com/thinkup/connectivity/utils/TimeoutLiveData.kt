@@ -3,7 +3,10 @@ package com.thinkup.connectivity.utils
 import android.os.Handler
 import androidx.lifecycle.MutableLiveData
 
-class TimeoutLiveData<T>(private val timeout: Long, private val default: T, action: (() -> Unit)? = null) : MutableLiveData<T>() {
+class TimeoutLiveData<T>(
+    private val timeout: Long, private val default: T,
+    private val control: T? = null, action: (() -> Unit)? = null
+) : MutableLiveData<T>() {
 
     private val handler: Handler = Handler()
     private val runnable = Runnable {
@@ -16,12 +19,12 @@ class TimeoutLiveData<T>(private val timeout: Long, private val default: T, acti
     }
 
     override fun setValue(value: T) {
-        handler.removeCallbacks(runnable)
+        if (control == null || control == value) handler.removeCallbacks(runnable)
         super.setValue(value)
     }
 
     override fun postValue(value: T) {
-        handler.removeCallbacks(runnable)
+        if (control == null || control == value) handler.removeCallbacks(runnable)
         super.postValue(value)
     }
 

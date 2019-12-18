@@ -20,6 +20,7 @@ class NodePeripheralMessageUnacked(
     }
 
     override fun assembleMessageParameters() {
+        super.assembleMessageParameters()
         val buffer = ByteBuffer.allocate(14).order(ByteOrder.LITTLE_ENDIAN)
         buffer.put(shape.toByte())
         buffer.put(color.toByte())
@@ -35,9 +36,5 @@ class NodePeripheralMessageUnacked(
         buffer.put(touch.toByte())
         buffer.put(sound.toByte())
         mParameters = buffer.array()
-    }
-
-    override fun getOpCode(): Int {
-        return OpCodes.NT_OPCODE_SET_PERIFERAL
     }
 }

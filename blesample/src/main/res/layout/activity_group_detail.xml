@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".ui.GroupDetailActivity">
+
+    <include
+            android:id="@+id/toolbar"
+            layout="@layout/toolbar" />
+
+    <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar">
+
+        <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CONTROL" />
+
+        <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CONFIG" />
+
+        <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PERIPHERAL" />
+
+        <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="EVENTS" />
+    </com.google.android.material.tabs.TabLayout>
+
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:fillViewport="true"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tabs">
+
+        <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+            <!-- EVENTS -->
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/events"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#FFF"
+                    android:clickable="true"
+                    android:padding="20dp"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/eventsList"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- PERIPHERAL -->
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/periferal"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#FFF"
+                    android:clickable="true"
+                    android:padding="20dp"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                <TextView
+                        android:id="@+id/shapeTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Shape     "
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                <Spinner
+                        android:id="@+id/shape"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:spinnerMode="dialog"
+                        app:layout_constraintBottom_toBottomOf="@+id/shapeTitle"
+                        app:layout_constraintStart_toEndOf="@+id/shapeTitle" />
+
+                <TextView
+                        android:id="@+id/colorTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Color     "
+                        app:layout_constraintBottom_toBottomOf="@+id/color"
+                        app:layout_constraintStart_toStartOf="parent" />
+
+                <Spinner
+                        android:id="@+id/color"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:spinnerMode="dialog"
+                        app:layout_constraintStart_toEndOf="@+id/colorTitle"
+                        app:layout_constraintTop_toBottomOf="@+id/shape" />
+
+                <TextView
+                        android:id="@+id/ledTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Led       "
+                        app:layout_constraintBottom_toBottomOf="@+id/led"
+                        app:layout_constraintStart_toStartOf="parent" />
+
+                <Spinner
+                        android:id="@+id/led"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:spinnerMode="dialog"
+                        app:layout_constraintStart_toEndOf="@+id/ledTitle"
+                        app:layout_constraintTop_toBottomOf="@+id/color" />
+
+                <TextView
+                        android:id="@+id/soundTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sound     "
+                        app:layout_constraintBottom_toBottomOf="@+id/sound"
+                        app:layout_constraintStart_toStartOf="parent" />
+
+                <Spinner
+                        android:id="@+id/sound"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:spinnerMode="dialog"
+                        app:layout_constraintStart_toEndOf="@+id/soundTitle"
+                        app:layout_constraintTop_toBottomOf="@+id/led" />
+
+
+                <TextView
+                        android:id="@+id/dimmerTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Dimmer    "
+                        app:layout_constraintBottom_toBottomOf="@+id/dimmer"
+                        app:layout_constraintStart_toStartOf="parent" />
+
+                <Spinner
+                        android:id="@+id/dimmer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:spinnerMode="dialog"
+                        app:layout_constraintStart_toEndOf="@+id/dimmerTitle"
+                        app:layout_constraintTop_toBottomOf="@+id/sound" />
+
+                <TextView
+                        android:id="@+id/fillTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="10dp"
+                        android:text="Fill"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/dimmer" />
+
+                <RadioGroup
+                        android:id="@+id/fillGroup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/fillTitle">
+
+                    <RadioButton
+                            android:id="@+id/solid"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Solid" />
+
+                    <RadioButton
+                            android:id="@+id/border"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Border" />
+
+                </RadioGroup>
+
+                <TextView
+                        android:id="@+id/gestureTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="10dp"
+                        android:text="Gesture"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/fillGroup" />
+
+                <RadioGroup
+                        android:id="@+id/gestureGroup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/gestureTitle">
+
+                    <RadioButton
+                            android:id="@+id/hover"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Hover" />
+
+                    <RadioButton
+                            android:id="@+id/touch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Touch" />
+
+                    <RadioButton
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Both" />
+                </RadioGroup>
+
+                <TextView
+                        android:id="@+id/distanceTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="10dp"
+                        android:text="Distance"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/gestureGroup" />
+
+                <RadioGroup
+                        android:id="@+id/distanceGroup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/distanceTitle">
+
+                    <RadioButton
+                            android:id="@+id/high"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="High" />
+
+                    <RadioButton
+                            android:id="@+id/medium"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Medium" />
+
+                    <RadioButton
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Low" />
+                </RadioGroup>
+
+                <TextView
+                        android:id="@+id/filterTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="10dp"
+                        android:text="Filter"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/distanceGroup" />
+
+                <RadioGroup
+                        android:id="@+id/filterGroup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/filterTitle">
+
+                    <RadioButton
+                            android:id="@+id/sunny"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sunny" />
+
+                    <RadioButton
+                            android:id="@+id/indoor"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Indoor" />
+                </RadioGroup>
+
+
+                <Button
+                        android:id="@+id/periferalSet"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Config"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/filterGroup" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- CONFIG  -->
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/config"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#FFF"
+                    android:clickable="true"
+                    android:padding="20dp"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/nodeId"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Node Id"
+                        app:layout_constraintTop_toTopOf="parent">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/nodeIdText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                        android:id="@+id/timeoutTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Timeout"
+                        app:layout_constraintEnd_toEndOf="@id/timeout"
+                        app:layout_constraintStart_toStartOf="@+id/timeout"
+                        app:layout_constraintTop_toBottomOf="@+id/nodeId" />
+
+                <NumberPicker
+                        android:id="@+id/timeout"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/timeoutTitle" />
+
+
+                <Button
+                        android:id="@+id/configSet"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Config"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/timeout" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- CONTROL -->
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/control"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#FFF"
+                    android:clickable="true"
+                    android:padding="20dp"
+                    tools:visibility="gone">
+
+                <Button
+                        android:id="@+id/controlStart"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Start"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                <Button
+                        android:id="@+id/controlPause"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pause"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                <Button
+                        android:id="@+id/controlStop"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Stop"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                <Button
+                        android:id="@+id/controlLedOn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Led ON"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/controlStart" />
+
+                <Button
+                        android:id="@+id/controlRecalibrar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Recalibrar"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/controlPause" />
+
+                <Button
+                        android:id="@+id/controlLedOff"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Led OFF"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/controlStop" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </RelativeLayout>
+    </ScrollView>
+
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginBottom="5dp"
+            android:text="All messages for groups don't have \nresponse (unacknowledged)"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -8,38 +8,36 @@ import com.thinkup.easycore.ViewRenderer
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.item_group.view.*
 import no.nordicsemi.android.meshprovisioner.Group
-import no.nordicsemi.android.meshprovisioner.models.VendorModel
-import no.nordicsemi.android.meshprovisioner.transport.MeshModel
+import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 class GroupRenderer(private val callback: Callback) : ViewRenderer<Group, View>(Group::class), MeshModelRenderer.Callback {
     override fun create(parent: ViewGroup): View = inflate(R.layout.item_group, parent, false)
 
     override fun bind(view: View, model: Group, position: Int) {
         val adapter = RendererAdapter()
-        val models = callback.getModels(model)
+        val nodes = callback.getModels(model)
         view.groupName.text = model.name
         view.groupAddress.text = "Address: ${model.address.toString()}"
-        view.groupModels.text = "Nodes: ${models.size}"
+        view.groupModels.text = "Subscriptions: ${nodes.size}"
         view.groupDelete.setOnClickListener { callback.onDelete(model) }
         view.groupNodes.layoutManager = LinearLayoutManager(view.context)
-        adapter.addRenderer(MeshModelRenderer(model, this))
         view.groupNodes.adapter = adapter
-        adapter.setItems(models)
+        adapter.addRenderer(MeshModelRenderer(model, this))
+        adapter.setItems(nodes)
         view.groupSubscribe.setOnClickListener { callback.onSubscribe(model) }
-        view.groupStatus.setOnClickListener { callback.onGetStatus(model, models) }
-        view.groupTtl.setOnClickListener { callback.onGetTtl(model) }
+        //view.groupStatus.setOnClickListener { callback.onGetStatus(model, nodes) }
+        view.groupMore.setOnClickListener { callback.onMore(model) }
     }
 
     interface Callback {
         fun onDelete(item: Group)
-        fun onDeleteItem(item: Group, model: VendorModel)
+        fun onDeleteItem(item: Group, meshNode: ProvisionedMeshNode)
         fun onSubscribe(item: Group)
-        fun onGetTtl(item: Group)
-        fun onGetStatus(item: Group, models: List<MeshModel>)
-        fun getModels(item: Group): List<MeshModel>
+        fun onMore(item: Group)
+        fun getModels(item: Group): List<ProvisionedMeshNode>
     }
 
-    override fun onDelete(group: Group, item: VendorModel) {
+    override fun onDelete(group: Group, item: ProvisionedMeshNode) {
         callback.onDeleteItem(group, item)
     }
 }

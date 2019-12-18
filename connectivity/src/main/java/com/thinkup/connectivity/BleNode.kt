@@ -6,8 +6,10 @@ import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 interface BleNode: BleConnection {
     fun delete(node: ProvisionedMeshNode): LiveData<Boolean>
+    fun deleteDB(node: ProvisionedMeshNode)
+    fun identify(node: ProvisionedMeshNode)
+    fun identify(nodes: List<ProvisionedMeshNode>)
     fun getStatus(node: ProvisionedMeshNode)
-    fun getTtl(node: ProvisionedMeshNode)
     fun controlMessage(node: ProvisionedMeshNode, params: Int)
     fun configMessage(
         node: ProvisionedMeshNode,

@@ -4,16 +4,17 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.view.isGone
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.thinkup.blesample.PermissionUtil
 import com.thinkup.blesample.R
 import com.thinkup.blesample.renderers.DeviceRenderer
+import com.thinkup.blesample.renderers.DividerHelper
 import com.thinkup.connectivity.BleProvisioner
 import com.thinkup.connectivity.BleScanner
 import com.thinkup.connectivity.provisioning.Status
@@ -22,11 +23,10 @@ import com.thinkup.connectivity.utils.CapabilitiesUtil
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_scanner.*
-import kotlinx.android.synthetic.main.activity_scanner.connectionStatus
-import kotlinx.android.synthetic.main.activity_scanner.toolbar
+import kotlinx.android.synthetic.main.toolbar.*
 import org.koin.android.ext.android.inject
 
-class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
+class ScannerActivity : BaseActivity(), DeviceRenderer.Callback {
 
     private val permissionUtil = PermissionUtil()
     private val capabilitiesUtil = CapabilitiesUtil()
@@ -34,27 +34,11 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
     private val bleScanner: BleScanner by inject()
     private val bleProvisioner: BleProvisioner by inject()
 
-    private fun startConnection() {
-        toolbar.title = title
-        connectionStatus.text = if (bleProvisioner.isConnected()?.value == true) "Connected" else "Disconnected"
-        connectionStatus.setOnClickListener {
-            if (bleProvisioner.isConnected()?.value == true) bleProvisioner.disconnect()
-            else bleProvisioner.autoConnect()
-        }
-        bleProvisioner.isConnected()?.observe(this, Observer {
-            connectionStatus.text = if (bleProvisioner.isConnected()?.value == true) {
-                "Connected"
-            } else {
-                bleProvisioner.autoConnect()
-                "Disconnected"
-            }
-        })
-    }
+    override fun title(): String = "Scanner for new nodes"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scanner)
-        startConnection()
         prepare()
         if (!permissionUtil.check(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             permissionUtil.request(
@@ -78,7 +62,9 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
     private fun prepare() {
         devicesList.layoutManager = LinearLayoutManager(this)
         devicesList.adapter = adapter
+        devicesList.addItemDecoration(DividerHelper(this))
         adapter.addRenderer(DeviceRenderer(this))
+        identify.isGone = true
     }
 
     private fun load() {
@@ -136,7 +122,7 @@ class ScannerActivity : AppCompatActivity(), DeviceRenderer.Callback {
                     textView.setOnClickListener { bleProvisioner.connect(this, device) }
                 }
                 Status.NODE_FOUND,
-                Status.BINDING_KEY -> {
+                Status.SETTING, Status.BINDING_APP_KEY -> {
                     textView.setTextColor(ContextCompat.getColor(this, R.color.green))
                 }
                 Status.FULL_CONFIGURED -> {

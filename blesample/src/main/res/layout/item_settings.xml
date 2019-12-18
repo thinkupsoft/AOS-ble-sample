@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+    <CheckBox
+            android:id="@+id/startSetting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enabled connect/reconnect config message" />
+
+    <CheckBox
+            android:id="@+id/keepSetting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enabled keep alive message" />
+
+    <CheckBox
+            android:id="@+id/configSetting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enabled config message on provision completed" />
+
+</LinearLayout>

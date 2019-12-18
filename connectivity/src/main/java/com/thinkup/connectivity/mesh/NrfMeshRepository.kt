@@ -9,16 +9,11 @@ import android.os.ParcelUuid
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.thinkup.connectivity.provisioning.Status
 import com.thinkup.connectivity.messges.OpCodes
-import com.thinkup.connectivity.messges.config.NodeConfigMessage
 import com.thinkup.connectivity.messges.config.NodeConfigMessageStatus
-import com.thinkup.connectivity.messges.control.NodeControlMessage
 import com.thinkup.connectivity.messges.control.NodeControlMessageStatus
 import com.thinkup.connectivity.messges.event.NodeEventStatus
-import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
-import com.thinkup.connectivity.messges.status.NodeGetMessage
 import com.thinkup.connectivity.messges.status.NodeGetMessageStatus
 import com.thinkup.connectivity.provisioning.ProvisioningStatusLiveData
 import com.thinkup.connectivity.utils.*
@@ -35,168 +30,134 @@ import java.io.File
 import java.util.*
 
 class NrfMeshRepository(
-    private val mMeshManagerApi: MeshManagerApi,
-    private val mBleMeshManager: BleMeshManager
+    private val meshManagerApi: MeshManagerApi,
+    private val bleMeshManager: BleMeshManager
 ) :
     MeshProvisioningStatusCallbacks,
     MeshStatusCallbacks,
     MeshManagerCallbacks,
     BleMeshManagerCallbacks {
 
-    init { //Initialize the mesh api
-        mMeshManagerApi.setMeshManagerCallbacks(this)
-        mMeshManagerApi.setProvisioningStatusCallbacks(this)
-        mMeshManagerApi.setMeshStatusCallbacks(this)
-        mMeshManagerApi.loadMeshNetwork()
-        //Initialize the ble manager
-        mBleMeshManager.setGattCallbacks(this)
-    }
-
-    // Provisioning flow
-    var provisionCallback: ProvisionCallback? = null
-    // Reset Callback
-    var nodeCallback: NodeCallback? = null
-
     private val TAG = NrfMeshRepository::class.java.simpleName
     private val ATTENTION_TIMER = 5
+
+    init { //Initialize the mesh api
+        meshManagerApi.setMeshManagerCallbacks(this)
+        meshManagerApi.setProvisioningStatusCallbacks(this)
+        meshManagerApi.setMeshStatusCallbacks(this)
+        meshManagerApi.loadMeshNetwork()
+        //Initialize the ble manager
+        bleMeshManager.setGattCallbacks(this)
+        // TODO remove for real impl
+        changeBatteryLevel()
+    }
+
+    private fun changeBatteryLevel() {
+        Handler().postDelayed({
+            batteryAverage.postValue((0..100).shuffled().first())
+            changeBatteryLevel()
+        }, 5000)
+    }
+
+    // Provisioning callback
+    var provisionCallback: ProvisionCallback? = null
+    // Is sending single/bulking message(s)
+    var isSending: Boolean = false
+    // Reset Callback
+    var nodeCallback: NodeCallback? = null
+    // Control vars
+    private val batteryAverage: MutableLiveData<Int?> = MutableLiveData()
+
     val EXPORT_PATH =
-        Environment.getExternalStorageDirectory().toString() + File.separator + "Nordic Semiconductor" + File.separator + "nRF Mesh" + File.separator
+        Environment.getExternalStorageDirectory().toString() + File.separator + "NeuralTrainer" + File.separator + "nRF Mesh" + File.separator
     private val EXPORTED_PATH =
-        "sdcard" + File.separator + "Nordic Semiconductor" + File.separator + "nRF Mesh" + File.separator
+        "sdcard" + File.separator + "NeuralTrainer" + File.separator + "nRF Mesh" + File.separator
     // Connection States Connecting, Connected, Disconnecting, Disconnected etc.
-    private val mIsConnectedToProxy = MutableLiveData<Boolean>()
+    private val isConnectedToProxy = MutableLiveData<Boolean>()
     // Live data flag containing connected state.
-    private var mIsConnected: MutableLiveData<Boolean> = MutableLiveData()
+    private var isConnected: MutableLiveData<Boolean> = MutableLiveData()
     // LiveData to notify when device is ready
-    private val mOnDeviceReady = MutableLiveData<Unit>()
+    private val onDeviceReady = MutableLiveData<Unit>()
     // Flag to determine if a reconnection is in the progress when provisioning has completed
-    private val mIsReconnecting: SingleLiveEvent<Boolean?> = SingleLiveEvent()
-    private val mUnprovisionedMeshNodeLiveData = MutableLiveData<UnprovisionedMeshNode?>()
-    private val mProvisionedMeshNodeLiveData = MutableLiveData<ProvisionedMeshNode?>()
-    private val mConnectedProxyAddress: SingleLiveEvent<Int?> = SingleLiveEvent()
-    private var mIsProvisioningComplete = false // Flag to determine if provisioning was completed
+    private val isReconnecting: SingleLiveEvent<Boolean?> = SingleLiveEvent()
+    private val unprovisionedMeshNodeLiveData = MutableLiveData<UnprovisionedMeshNode?>()
+    private val provisionedMeshNodeLiveData = MutableLiveData<ProvisionedMeshNode?>()
+    private val connectedProxyAddress: SingleLiveEvent<Int?> = SingleLiveEvent()
+    private var isProvisioningComplete = false // Flag to determine if provisioning was completed
     // Holds the selected MeshNode to configure
-    private val mExtendedMeshNode: MutableLiveData<ProvisionedMeshNode?>? = MutableLiveData()
+    private val extendedMeshNode: MutableLiveData<ProvisionedMeshNode?>? = MutableLiveData()
     // Holds the selected Element to configure
-    private val mSelectedElement = MutableLiveData<Element?>()
+    private val selectedElement = MutableLiveData<Element?>()
     // Holds the selected mesh model to configure
-    private val mSelectedModel = MutableLiveData<MeshModel?>()
+    private val selectedModel = MutableLiveData<MeshModel?>()
     // Holds the selected app key to configure
-    private val mSelectedNetKey = MutableLiveData<NetworkKey>()
+    private val selectedNetKey = MutableLiveData<NetworkKey>()
     // Holds the selected app key to configure
-    private val mSelectedAppKey = MutableLiveData<ApplicationKey>()
+    private val selectedAppKey = MutableLiveData<ApplicationKey>()
     // Holds the selected provisioner when adding/editing
-    private val mSelectedProvisioner = MutableLiveData<Provisioner>()
-    private val mSelectedGroupLiveData = MutableLiveData<Group>()
-    // Composition data status
-    val mCompositionDataStatus: SingleLiveEvent<ConfigCompositionDataStatus> = SingleLiveEvent()
-    // App key add status
-    val mAppKeyStatus: SingleLiveEvent<ConfigAppKeyStatus> = SingleLiveEvent()
+    private val selectedProvisioner = MutableLiveData<Provisioner>()
+    private val selectedGroupLiveData = MutableLiveData<Group>()
     //Contains the MeshNetwork
-    private val mMeshNetworkLiveData: MeshNetworkLiveData = MeshNetworkLiveData()
-    private val mNetworkImportState: SingleLiveEvent<String?> = SingleLiveEvent()
-    private val mMeshMessageLiveData: SingleLiveEvent<MeshMessage?> = SingleLiveEvent()
-    private val mEventMessageLiveData: ComparableSingleLiveData<NodeEventStatus> = ComparableSingleLiveData()
+    private val meshNetworkLiveData: MeshNetworkLiveData = MeshNetworkLiveData()
+    private val networkImportState: SingleLiveEvent<String?> = SingleLiveEvent()
+    private val meshMessageLiveData: SingleLiveEvent<MeshMessage?> = SingleLiveEvent()
+    private val keepMessageLiveData: SingleLiveEvent<NodeConfigMessageStatus?> = SingleLiveEvent()
+    private val eventMessageLiveData: ComparableSingleLiveData<NodeEventStatus> = ComparableSingleLiveData()
     // Contains the provisioned nodes
-    private val mProvisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
-    private val mGroups = MutableLiveData<List<Group>>()
-    private val mTransactionStatus: MutableLiveData<TransactionStatus?> = SingleLiveEvent()
-    private var mHandler: Handler = Handler()
-    private var mUnprovisionedMeshNode: UnprovisionedMeshNode? = null
-    private var mProvisionedMeshNode: ProvisionedMeshNode? = null
-    private var mIsReconnectingFlag = false
-    private var mIsScanning = false
-    private var mSetupProvisionedNode = false
-    private lateinit var mProvisioningStateLiveData: ProvisioningStatusLiveData
-    private var mMeshNetwork: MeshNetwork? = null
-    private var mIsCompositionDataReceived = false
-    private var mIsDefaultTtlReceived = false
-    private var mIsAppKeyAddCompleted = false
-    private var mIsNetworkRetransmitSetCompleted = false
+    private val provisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
+    private val groups = MutableLiveData<List<Group>>()
+    private val transactionStatus: MutableLiveData<TransactionStatus?> = SingleLiveEvent()
+    private var handler: Handler = Handler()
+    private var unprovisionedMeshNode: UnprovisionedMeshNode? = null
+    private var provisionedMeshNode: ProvisionedMeshNode? = null
+    private var isReconnectingFlag = false
+    private var isScanning = false
+    private var provisionedNode = false
+    private lateinit var provisioningStateLiveData: ProvisioningStatusLiveData
+    private var meshNetwork: MeshNetwork? = null
+    private var isCompositionDataReceived = false
+    private var isDefaultTtlReceived = false
+    private var isAppKeyAddCompleted = false
+    private var isNetworkRetransmitSetCompleted = false
     private val uri: Uri? = null
-    private val mReconnectRunnable = Runnable { startScan() }
+    private val reconnectRunnable = Runnable { startScan() }
     private fun autoconnectRunnable(context: Context) = Runnable { startScan(getScanAutoCallback(getNetworkId(), context)) }
-    private val mScannerTimeout = Runnable {
+    private val scannerTimeout = Runnable {
         stopScan()
-        mIsReconnecting.postValue(false)
+        isReconnecting.postValue(false)
     }
 
     /**
      * Returns [SingleLiveEvent] containing the device ready state.
      */
     fun isDeviceReady(): LiveData<Unit> {
-        return mOnDeviceReady
+        return onDeviceReady
     }
 
     /**
      * Returns [SingleLiveEvent] containing the device ready state.
      */
     fun isConnected(): LiveData<Boolean> {
-        return mIsConnected
+        return isConnected
     }
 
     /**
      * Returns [SingleLiveEvent] containing the device ready state.
      */
     fun isConnectedToProxy(): LiveData<Boolean> {
-        return mIsConnectedToProxy
-    }
-
-    fun isReconnecting(): LiveData<Boolean?>? {
-        return mIsReconnecting
-    }
-
-    fun isProvisioningComplete(): Boolean {
-        return mIsProvisioningComplete
-    }
-
-    fun isCompositionDataStatusReceived(): Boolean {
-        return mIsCompositionDataReceived
-    }
-
-    fun isDefaultTtlReceived(): Boolean {
-        return mIsDefaultTtlReceived
-    }
-
-    fun isAppKeyAddCompleted(): Boolean {
-        return mIsAppKeyAddCompleted
-    }
-
-    fun isNetworkRetransmitSetCompleted(): Boolean {
-        return mIsNetworkRetransmitSetCompleted
+        return isConnectedToProxy
     }
 
     fun getMeshNetworkLiveData(): MeshNetworkLiveData {
-        return mMeshNetworkLiveData
+        return meshNetworkLiveData
     }
 
     fun getNodes(): LiveData<List<ProvisionedMeshNode>> {
-        return mProvisionedNodes
+        return provisionedNodes
     }
 
     fun getGroups(): LiveData<List<Group>> {
-        return mGroups
-    }
-
-    fun getNetworkLoadState(): LiveData<String?>? {
-        return mNetworkImportState
-    }
-
-    fun getProvisioningState(): ProvisioningStatusLiveData {
-        return mProvisioningStateLiveData
-    }
-
-    fun getTransactionStatus(): LiveData<TransactionStatus?>? {
-        return mTransactionStatus
-    }
-
-    /**
-     * Clears the transaction status
-     */
-    fun clearTransactionStatus() {
-        if (mTransactionStatus.value != null) {
-            mTransactionStatus.postValue(null)
-        }
+        return groups
     }
 
     /**
@@ -205,7 +166,7 @@ class NrfMeshRepository(
      * @return [MeshManagerApi]
      */
     fun getMeshManagerApi(): MeshManagerApi {
-        return mMeshManagerApi
+        return meshManagerApi
     }
 
     /**
@@ -214,25 +175,36 @@ class NrfMeshRepository(
      * @return [BleMeshManager]
      */
     fun getBleMeshManager(): BleMeshManager {
-        return mBleMeshManager
+        return bleMeshManager
     }
 
     /**
      * Returns the [MeshMessageLiveData] live data object containing the mesh message
      */
     fun getMeshMessageLiveData(): LiveData<MeshMessage?> {
-        return mMeshMessageLiveData
+        return meshMessageLiveData
+    }
+
+    /**
+     * Returns the [MeshMessageLiveData] live data object containing the mesh message
+     */
+    fun getKeepMessageLiveData(): LiveData<NodeConfigMessageStatus?> {
+        return keepMessageLiveData
+    }
+
+    fun flushKeepMessageLiveData() {
+        keepMessageLiveData.postValue(null)
     }
 
     /**
      * Returns the [EventMessageLiveData] live data object containing the mesh message
      */
     fun getEventMessageLiveData(): LiveData<NodeEventStatus> {
-        return mEventMessageLiveData
+        return eventMessageLiveData
     }
 
     fun getSelectedGroup(): LiveData<Group>? {
-        return mSelectedGroupLiveData
+        return selectedGroupLiveData
     }
 
     /**
@@ -240,7 +212,7 @@ class NrfMeshRepository(
      */
     fun resetMeshNetwork() {
         disconnect()
-        mMeshManagerApi.resetMeshNetwork()
+        meshManagerApi.resetMeshNetwork()
     }
 
     /**
@@ -255,12 +227,12 @@ class NrfMeshRepository(
         device: ExtendedBluetoothDevice,
         connectToNetwork: Boolean
     ) {
-        mMeshNetworkLiveData.setNodeName(device.name)
-        mIsProvisioningComplete = false
-        mIsCompositionDataReceived = false
-        mIsDefaultTtlReceived = false
-        mIsAppKeyAddCompleted = false
-        mIsNetworkRetransmitSetCompleted = false
+        meshNetworkLiveData.setNodeName(device.name)
+        isProvisioningComplete = false
+        isCompositionDataReceived = false
+        isDefaultTtlReceived = false
+        isAppKeyAddCompleted = false
+        isNetworkRetransmitSetCompleted = false
         //clearExtendedMeshNode();
         val logSession = Logger.newSession(
             context!!,
@@ -268,12 +240,12 @@ class NrfMeshRepository(
             device.getAddress(),
             device.name
         )
-        mBleMeshManager.logSession = logSession
+        bleMeshManager.logSession = logSession
         val bluetoothDevice: BluetoothDevice = device.device
         initIsConnectedLiveData(connectToNetwork)
         //Added a 1 second delay for connection, mostly to wait for a disconnection to complete before connecting.
-        mHandler.postDelayed({
-            mBleMeshManager.connect(bluetoothDevice).retry(3, 200).enqueue()
+        handler.postDelayed({
+            bleMeshManager.connect(bluetoothDevice).retry(3, 200).enqueue()
         }, 1000)
     }
 
@@ -284,22 +256,22 @@ class NrfMeshRepository(
      */
     private fun connectToProxy(device: ExtendedBluetoothDevice) {
         initIsConnectedLiveData(true)
-        mBleMeshManager.connect(device.device).retry(3, 200).enqueue()
+        bleMeshManager.connect(device.device).retry(3, 200).enqueue()
     }
 
     fun autoConnect(context: Context): LiveData<Unit> {
-        mHandler.postDelayed(
+        handler.postDelayed(
             autoconnectRunnable(context),
-            1000
+            100
         )
-        return mOnDeviceReady
+        return onDeviceReady
     }
 
     private fun initIsConnectedLiveData(connectToNetwork: Boolean) {
         if (connectToNetwork) {
-            mIsConnected = SingleLiveEvent()
+            isConnected = SingleLiveEvent()
         } else {
-            mIsConnected = MutableLiveData()
+            isConnected = MutableLiveData()
         }
     }
 
@@ -308,58 +280,58 @@ class NrfMeshRepository(
      */
     fun disconnect() {
         clearProvisioningLiveData()
-        mIsProvisioningComplete = false
-        mBleMeshManager.disconnect().enqueue()
+        isProvisioningComplete = false
+        bleMeshManager.disconnect().enqueue()
     }
 
     fun clearProvisioningLiveData() {
         stopScan()
-        mHandler.removeCallbacks(mReconnectRunnable)
-        mSetupProvisionedNode = false
-        mIsReconnectingFlag = false
-        mUnprovisionedMeshNodeLiveData.value = null
-        mProvisionedMeshNodeLiveData.value = null
+        handler.removeCallbacks(reconnectRunnable)
+        provisionedNode = false
+        isReconnectingFlag = false
+        unprovisionedMeshNodeLiveData.value = null
+        provisionedMeshNodeLiveData.value = null
     }
 
     private fun removeCallbacks() {
-        mHandler.removeCallbacksAndMessages(null)
+        handler.removeCallbacksAndMessages(null)
     }
 
     fun identifyNode(device: ExtendedBluetoothDevice) {
         val beacon = device.beacon as UnprovisionedBeacon?
         if (beacon != null) {
-            mMeshManagerApi.identifyNode(beacon.uuid, ATTENTION_TIMER)
+            meshManagerApi.identifyNode(beacon.uuid, ATTENTION_TIMER)
         } else {
             val serviceData: ByteArray? =
                 Utils.getServiceData(device.scanResult, Constants.MESH_PROVISIONING_UUID)
             if (serviceData != null) {
-                val uuid = mMeshManagerApi.getDeviceUuid(serviceData)
-                mMeshManagerApi.identifyNode(uuid, ATTENTION_TIMER)
+                val uuid = meshManagerApi.getDeviceUuid(serviceData)
+                meshManagerApi.identifyNode(uuid, ATTENTION_TIMER)
             }
         }
     }
 
     private fun clearExtendedMeshNode() {
-        mExtendedMeshNode?.postValue(null)
+        extendedMeshNode?.postValue(null)
     }
 
     fun getUnprovisionedMeshNode(): LiveData<UnprovisionedMeshNode?> {
-        return mUnprovisionedMeshNodeLiveData
+        return unprovisionedMeshNodeLiveData
     }
 
     fun getProvisionedMeshNode(): LiveData<ProvisionedMeshNode?> {
-        return mProvisionedMeshNodeLiveData
+        return provisionedMeshNodeLiveData
     }
 
     fun getConnectedProxyAddress(): LiveData<Int?>? {
-        return mConnectedProxyAddress
+        return connectedProxyAddress
     }
 
     /**
      * Returns the selected mesh node
      */
     fun getSelectedMeshNode(): LiveData<ProvisionedMeshNode?>? {
-        return mExtendedMeshNode
+        return extendedMeshNode
     }
 
     /**
@@ -368,14 +340,14 @@ class NrfMeshRepository(
      * @param node provisioned mesh node
      */
     fun setSelectedMeshNode(node: ProvisionedMeshNode?) {
-        mExtendedMeshNode!!.postValue(node)
+        extendedMeshNode!!.postValue(node)
     }
 
     /**
      * Returns the selected element
      */
     fun getSelectedElement(): LiveData<Element?>? {
-        return mSelectedElement
+        return selectedElement
     }
 
     /**
@@ -384,7 +356,7 @@ class NrfMeshRepository(
      * @param element element
      */
     fun setSelectedElement(element: Element?) {
-        mSelectedElement.postValue(element)
+        selectedElement.postValue(element)
     }
 
     /**
@@ -393,14 +365,14 @@ class NrfMeshRepository(
      * @param appKey mesh model
      */
     fun setSelectedAppKey(appKey: ApplicationKey) {
-        mSelectedAppKey.postValue(appKey)
+        selectedAppKey.postValue(appKey)
     }
 
     /**
      * Returns the selected mesh model
      */
     fun getSelectedAppKey(): LiveData<ApplicationKey>? {
-        return mSelectedAppKey
+        return selectedAppKey
     }
 
     /**
@@ -409,21 +381,21 @@ class NrfMeshRepository(
      * @param provisioner [Provisioner]
      */
     fun setSelectedProvisioner(provisioner: Provisioner) {
-        mSelectedProvisioner.postValue(provisioner)
+        selectedProvisioner.postValue(provisioner)
     }
 
     /**
      * Returns the selected [Provisioner]
      */
     fun getSelectedProvisioner(): LiveData<Provisioner>? {
-        return mSelectedProvisioner
+        return selectedProvisioner
     }
 
     /**
      * Returns the selected mesh model
      */
     fun getSelectedModel(): LiveData<MeshModel?>? {
-        return mSelectedModel
+        return selectedModel
     }
 
     /**
@@ -432,27 +404,29 @@ class NrfMeshRepository(
      * @param model mesh model
      */
     fun setSelectedModel(model: MeshModel?) {
-        mSelectedModel.postValue(model)
+        selectedModel.postValue(model)
     }
+
+    fun getBatteryAverage(): LiveData<Int?> = batteryAverage
 
     override fun onDataReceived(
         bluetoothDevice: BluetoothDevice?,
         mtu: Int,
         pdu: ByteArray
     ) {
-        mMeshManagerApi.handleNotifications(mtu, pdu)
+        meshManagerApi.handleNotifications(mtu, pdu)
     }
 
     override fun onDataSent(device: BluetoothDevice?, mtu: Int, pdu: ByteArray) {
-        mMeshManagerApi.handleWriteCallbacks(mtu, pdu)
+        meshManagerApi.handleWriteCallbacks(mtu, pdu)
     }
 
     override fun onDeviceConnecting(device: BluetoothDevice) {
     }
 
     override fun onDeviceConnected(device: BluetoothDevice) {
-        mIsConnected.postValue(true)
-        mIsConnectedToProxy.postValue(true)
+        isConnected.postValue(true)
+        isConnectedToProxy.postValue(true)
     }
 
     override fun onDeviceDisconnecting(device: BluetoothDevice) {
@@ -461,27 +435,27 @@ class NrfMeshRepository(
 
     override fun onDeviceDisconnected(device: BluetoothDevice) {
         Log.v(TAG, "Disconnected")
-        if (mIsReconnectingFlag) {
-            mIsReconnectingFlag = false
-            mIsReconnecting.postValue(false)
-            mIsConnected.postValue(false)
-            mIsConnectedToProxy.postValue(false)
+        if (isReconnectingFlag) {
+            isReconnectingFlag = false
+            isReconnecting.postValue(false)
+            isConnected.postValue(false)
+            isConnectedToProxy.postValue(false)
         } else {
-            mIsConnected.postValue(false)
-            mIsConnectedToProxy.postValue(false)
-            if (mConnectedProxyAddress.value != null) {
-                val network = mMeshManagerApi.meshNetwork
+            isConnected.postValue(false)
+            isConnectedToProxy.postValue(false)
+            if (connectedProxyAddress.value != null) {
+                val network = meshManagerApi.meshNetwork
                 network!!.proxyFilter = null
             }
             //clearExtendedMeshNode();
         }
-        mSetupProvisionedNode = false
-        mConnectedProxyAddress.postValue(null)
+        provisionedNode = false
+        connectedProxyAddress.postValue(null)
     }
 
     override fun onLinkLossOccurred(device: BluetoothDevice) {
         Log.v(TAG, "Link loss occurred")
-        mIsConnected.postValue(false)
+        isConnected.postValue(false)
     }
 
     override fun onServicesDiscovered(
@@ -491,31 +465,31 @@ class NrfMeshRepository(
     }
 
     override fun onDeviceReady(device: BluetoothDevice) {
-        mOnDeviceReady.postValue(null)
-        deviceReadyProvision()
-        if (mBleMeshManager.isProvisioningComplete()) {
-            if (mSetupProvisionedNode) {
-                if (mMeshNetwork!!.selectedProvisioner.provisionerAddress != null) {
-                    mHandler.postDelayed({
+        onDeviceReady.postValue(null)
+        deviceReadyProvision(isSending)
+        if (bleMeshManager.isProvisioningComplete()) {
+            if (provisionedNode || isSending) {
+                if (meshNetwork!!.selectedProvisioner.provisionerAddress != null) {
+                    handler.postDelayed({
                         //Adding a slight delay here so we don't send anything before we receive the mesh beacon message
-                        val node = mProvisionedMeshNodeLiveData.value
+                        val node = provisionedMeshNodeLiveData.value
                         if (node != null) {
                             val compositionDataGet =
                                 ConfigCompositionDataGet()
-                            mMeshManagerApi.createMeshPdu(
+                            meshManagerApi.createMeshPdu(
                                 node.unicastAddress,
                                 compositionDataGet
                             )
                         }
                     }, 2000)
                 } else {
-                    mSetupProvisionedNode = false
-                    mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.PROVISIONER_UNASSIGNED)
+                    provisionedNode = false
+                    provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.PROVISIONER_UNASSIGNED)
                     clearExtendedMeshNode()
-                    deviceFailProvision()
+                    deviceFailProvision(isSending)
                 }
             }
-            mIsConnectedToProxy.postValue(true)
+            isConnectedToProxy.postValue(true)
         }
     }
 
@@ -549,18 +523,18 @@ class NrfMeshRepository(
     }
 
     override fun onNetworkLoadFailed(error: String?) {
-        mNetworkImportState.postValue(error)
+        networkImportState.postValue(error)
     }
 
     override fun onNetworkImported(meshNetwork: MeshNetwork) { //We can delete the old network after the import has been successful!
 //But let's make sure we don't delete the same network in case someone imports the same network ;)
-        val oldNet = mMeshNetwork
+        val oldNet = this.meshNetwork
         if (oldNet!!.meshUUID != meshNetwork.meshUUID) {
-            mMeshManagerApi.deleteMeshNetworkFromDb(oldNet)
+            meshManagerApi.deleteMeshNetworkFromDb(oldNet)
         }
         loadNetwork(meshNetwork)
         loadGroups()
-        mNetworkImportState.postValue(
+        networkImportState.postValue(
             meshNetwork.meshName + " has been successfully imported.\n" +
                     "In order to start sending messages to this network, please change the provisioner address. " +
                     "Using the same provisioner address will cause messages to be discarded due to the usage of incorrect sequence numbers " +
@@ -569,22 +543,22 @@ class NrfMeshRepository(
     }
 
     override fun onNetworkImportFailed(error: String?) {
-        mNetworkImportState.postValue(error)
+        networkImportState.postValue(error)
     }
 
     override fun sendProvisioningPdu(
         meshNode: UnprovisionedMeshNode?,
         pdu: ByteArray?
     ) {
-        mBleMeshManager.sendPdu(pdu)
+        bleMeshManager.sendPdu(pdu)
     }
 
     override fun onMeshPduCreated(pdu: ByteArray?) {
-        mBleMeshManager.sendPdu(pdu)
+        bleMeshManager.sendPdu(pdu)
     }
 
     override fun getMtu(): Int {
-        return mBleMeshManager.getPublicMtu()
+        return bleMeshManager.getPublicMtu()
     }
 
     override fun onProvisioningStateChanged(
@@ -592,22 +566,22 @@ class NrfMeshRepository(
         state: States,
         data: ByteArray?
     ) {
-        mUnprovisionedMeshNode = meshNode
-        mUnprovisionedMeshNodeLiveData.postValue(meshNode)
+        unprovisionedMeshNode = meshNode
+        unprovisionedMeshNodeLiveData.postValue(meshNode)
         when (state) {
             States.PROVISIONING_INVITE -> {
                 identifyProvision(meshNode!!)
-                mProvisioningStateLiveData = ProvisioningStatusLiveData()
+                provisioningStateLiveData = ProvisioningStatusLiveData()
             }
             States.PROVISIONING_CAPABILITIES -> {
                 identifyProvision(meshNode!!)
             }
             States.PROVISIONING_FAILED -> {
                 provisionFail()
-                mIsProvisioningComplete = false
+                isProvisioningComplete = false
             }
         }
-        mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
+        provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
     }
 
     override fun onProvisioningFailed(
@@ -615,13 +589,13 @@ class NrfMeshRepository(
         state: States,
         data: ByteArray?
     ) {
-        mUnprovisionedMeshNode = meshNode
-        mUnprovisionedMeshNodeLiveData.postValue(meshNode)
+        unprovisionedMeshNode = meshNode
+        unprovisionedMeshNodeLiveData.postValue(meshNode)
         if (state == States.PROVISIONING_FAILED) {
             provisionFail()
-            mIsProvisioningComplete = false
+            isProvisioningComplete = false
         }
-        mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
+        provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
     }
 
     override fun onProvisioningCompleted(
@@ -629,24 +603,24 @@ class NrfMeshRepository(
         state: States,
         data: ByteArray?
     ) {
-        mProvisionedMeshNode = meshNode
-        mUnprovisionedMeshNodeLiveData.postValue(null)
-        mProvisionedMeshNodeLiveData.postValue(meshNode)
+        provisionedMeshNode = meshNode
+        unprovisionedMeshNodeLiveData.postValue(null)
+        provisionedMeshNodeLiveData.postValue(meshNode)
         if (state == States.PROVISIONING_COMPLETE) {
             provisionComplete(meshNode!!)
             onProvisioningCompleted(meshNode)
         }
-        mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
+        provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.fromStatusCode(state.state))
     }
 
     private fun onProvisioningCompleted(node: ProvisionedMeshNode?) {
-        mIsProvisioningComplete = true
-        mProvisionedMeshNode = node
-        mIsReconnecting.postValue(true)
-        mBleMeshManager.disconnect().enqueue()
+        isProvisioningComplete = true
+        provisionedMeshNode = node
+        isReconnecting.postValue(true)
+        bleMeshManager.disconnect().enqueue()
         loadNodes()
-        mHandler.postDelayed(
-            mReconnectRunnable,
+        handler.postDelayed(
+            reconnectRunnable,
             1000
         ) //Added a slight delay to disconnect and refresh the cache
     }
@@ -656,81 +630,94 @@ class NrfMeshRepository(
      */
     fun loadNodes() {
         val nodes: MutableList<ProvisionedMeshNode> = ArrayList()
-        for (node in mMeshNetwork!!.nodes) {
-            if (!node.uuid.equals(mMeshNetwork!!.selectedProvisioner.provisionerUuid, ignoreCase = true)) {
+        for (node in meshNetwork!!.nodes) {
+            if (!node.uuid.equals(meshNetwork!!.selectedProvisioner.provisionerUuid, ignoreCase = true)) {
                 nodes.add(node)
             }
         }
-        mProvisionedNodes.postValue(nodes)
+        provisionedNodes.postValue(nodes)
+    }
+
+    fun updateNodes(connecteds: List<ProvisionedMeshNode>) {
+        var hasReload = false
+        for (node in meshNetwork?.nodes ?: listOf()) {
+            hasReload = true
+            connecteds.find { it.nodeName == node.nodeName }?.let {
+                node.isOnline = true
+            } ?: run {
+                node.isOnline = false
+            }
+        }
+        if (hasReload) loadNodes()
     }
 
     override fun onTransactionFailed(dst: Int, hasIncompleteTimerExpired: Boolean) {
-        mProvisionedMeshNode = mMeshNetwork!!.getNode(dst)
-        mTransactionStatus.postValue(TransactionStatus(dst, hasIncompleteTimerExpired))
+        provisionedMeshNode = meshNetwork!!.getNode(dst)
+        transactionStatus.postValue(TransactionStatus(dst, hasIncompleteTimerExpired))
     }
 
     override fun onUnknownPduReceived(src: Int, accessPayload: ByteArray?) {
-        val node = mMeshNetwork!!.getNode(src)
+        val node = meshNetwork!!.getNode(src)
         if (node != null) {
-            mProvisionedMeshNode = node
+            provisionedMeshNode = node
             updateNode(node)
         }
     }
 
     override fun onBlockAcknowledgementProcessed(dst: Int, message: ControlMessage) {
-        val node = mMeshNetwork!!.getNode(dst)
+        val node = meshNetwork!!.getNode(dst)
         if (node != null) {
-            mProvisionedMeshNode = node
-            if (mSetupProvisionedNode) {
-                mProvisionedMeshNodeLiveData.postValue(mProvisionedMeshNode)
-                mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_BLOCK_ACKNOWLEDGEMENT)
+            provisionedMeshNode = node
+            if (provisionedNode) {
+                provisionedMeshNodeLiveData.postValue(provisionedMeshNode)
+                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_BLOCK_ACKNOWLEDGEMENT)
             }
         }
     }
 
     override fun onBlockAcknowledgementReceived(src: Int, message: ControlMessage) {
-        val node = mMeshNetwork!!.getNode(src)
+        val node = meshNetwork!!.getNode(src)
         if (node != null) {
-            mProvisionedMeshNode = node
-            if (mSetupProvisionedNode) {
-                mProvisionedMeshNodeLiveData.postValue(node)
-                mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.BLOCK_ACKNOWLEDGEMENT_RECEIVED)
+            provisionedMeshNode = node
+            if (provisionedNode) {
+                provisionedMeshNodeLiveData.postValue(node)
+                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.BLOCK_ACKNOWLEDGEMENT_RECEIVED)
             }
         }
     }
 
     override fun onMeshMessageProcessed(dst: Int, meshMessage: MeshMessage) {
-        val node = mMeshNetwork!!.getNode(dst)
+        val node = meshNetwork!!.getNode(dst)
         if (node != null) {
-            mProvisionedMeshNode = node
+            provisionedMeshNode = node
             if (meshMessage is ConfigCompositionDataGet) {
-                if (mSetupProvisionedNode) {
-                    mProvisionedMeshNodeLiveData.postValue(node)
-                    mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.COMPOSITION_DATA_GET_SENT)
+                if (provisionedNode) {
+                    provisionedMeshNodeLiveData.postValue(node)
+                    provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.COMPOSITION_DATA_GET_SENT)
                 }
             } else if (meshMessage is ConfigDefaultTtlGet) {
-                if (mSetupProvisionedNode) {
-                    mProvisionedMeshNodeLiveData.postValue(node)
-                    mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_DEFAULT_TTL_GET)
+                if (provisionedNode) {
+                    provisionedMeshNodeLiveData.postValue(node)
+                    provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_DEFAULT_TTL_GET)
                 }
             } else if (meshMessage is ConfigAppKeyAdd) {
-                if (mSetupProvisionedNode) {
-                    mProvisionedMeshNodeLiveData.postValue(node)
-                    mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_APP_KEY_ADD)
+                if (provisionedNode) {
+                    provisionedMeshNodeLiveData.postValue(node)
+                    provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_APP_KEY_ADD)
                 }
             } else if (meshMessage is ConfigNetworkTransmitSet) {
-                if (mSetupProvisionedNode) {
-                    mProvisionedMeshNodeLiveData.postValue(node)
-                    mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_NETWORK_TRANSMIT_SET)
+                if (provisionedNode) {
+                    provisionedMeshNodeLiveData.postValue(node)
+                    provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.SENDING_NETWORK_TRANSMIT_SET)
                 }
             }
         }
     }
 
     override fun onMeshMessageReceived(src: Int, meshMessage: MeshMessage) {
-        val node = mMeshNetwork!!.getNode(src)
+        val node = meshNetwork!!.getNode(src)
         if (node != null) if (meshMessage is ProxyConfigFilterStatus) {
-            mProvisionedMeshNode = node
+            provisionedMeshNode = node
             setSelectedMeshNode(node)
             val status = meshMessage
             val unicastAddress = status.src
@@ -738,65 +725,64 @@ class NrfMeshRepository(
                 TAG,
                 "Proxy configuration source: " + MeshAddress.formatAddress(status.src, false)
             )
-            mConnectedProxyAddress.postValue(unicastAddress)
-            mMeshMessageLiveData.postValue(status)
+            connectedProxyAddress.postValue(unicastAddress)
+            meshMessageLiveData.postValue(status)
         } else if (meshMessage is ConfigCompositionDataStatus) {
             val status = meshMessage
-            if (mSetupProvisionedNode) {
-                mIsCompositionDataReceived = true
-                mProvisionedMeshNodeLiveData.postValue(node)
-                mConnectedProxyAddress.postValue(node.unicastAddress)
-                mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.COMPOSITION_DATA_STATUS_RECEIVED)
-                mHandler.postDelayed({
+            if (provisionedNode || isSending) {
+                isCompositionDataReceived = true
+                provisionedMeshNodeLiveData.postValue(node)
+                connectedProxyAddress.postValue(node.unicastAddress)
+                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.COMPOSITION_DATA_STATUS_RECEIVED)
+                handler.postDelayed({
                     val configDefaultTtlGet = ConfigDefaultTtlGet()
-                    mMeshManagerApi.createMeshPdu(node.unicastAddress, configDefaultTtlGet)
+                    meshManagerApi.createMeshPdu(node.unicastAddress, configDefaultTtlGet)
                 }, 500)
             } else {
                 updateNode(node)
             }
         } else if (meshMessage is ConfigDefaultTtlStatus) {
-            if (mSetupProvisionedNode) {
-                mIsDefaultTtlReceived = true
-                mProvisionedMeshNodeLiveData.postValue(node)
-                mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.DEFAULT_TTL_STATUS_RECEIVED)
-                mHandler.postDelayed({
-                    val appKey: ApplicationKey? = mMeshNetworkLiveData.getSelectedAppKey()
+            if (provisionedNode || isSending) {
+                isDefaultTtlReceived = true
+                provisionedMeshNodeLiveData.postValue(node)
+                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.DEFAULT_TTL_STATUS_RECEIVED)
+                handler.postDelayed({
+                    val appKey: ApplicationKey? = meshNetworkLiveData.getSelectedAppKey()
                     val index = node.addedNetKeys[0].index
-                    val networkKey = mMeshNetwork!!.netKeys[index]
+                    val networkKey = meshNetwork!!.netKeys[index]
                     val configAppKeyAdd = ConfigAppKeyAdd(networkKey, appKey!!)
-                    mMeshManagerApi.createMeshPdu(node.unicastAddress, configAppKeyAdd)
+                    meshManagerApi.createMeshPdu(node.unicastAddress, configAppKeyAdd)
                 }, 1500)
             } else {
                 updateNode(node)
-                mMeshMessageLiveData.postValue(meshMessage)
+                meshMessageLiveData.postValue(meshMessage)
             }
         } else if (meshMessage is ConfigAppKeyStatus) {
             val status = meshMessage
-            if (mSetupProvisionedNode) {
+            if (provisionedNode || isSending) {
                 if (status.isSuccessful) {
-                    mIsAppKeyAddCompleted = true
-                    mProvisionedMeshNodeLiveData.postValue(node)
-                    mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.APP_KEY_STATUS_RECEIVED)
-                    mHandler.postDelayed({
+                    isAppKeyAddCompleted = true
+                    provisionedMeshNodeLiveData.postValue(node)
+                    provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.APP_KEY_STATUS_RECEIVED)
+                    handler.postDelayed({
                         val networkTransmitSet =
                             ConfigNetworkTransmitSet(2, 1)
-                        mMeshManagerApi.createMeshPdu(node.unicastAddress, networkTransmitSet)
+                        meshManagerApi.createMeshPdu(node.unicastAddress, networkTransmitSet)
                     }, 1500)
                 }
-                bindNodeKeyComplete(node)
             } else {
                 updateNode(node)
-                mMeshMessageLiveData.postValue(status)
+                meshMessageLiveData.postValue(status)
             }
         } else if (meshMessage is ConfigNetworkTransmitStatus) {
-            if (mSetupProvisionedNode) {
-                mSetupProvisionedNode = false
-                mIsNetworkRetransmitSetCompleted = true
-                mProvisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.NETWORK_TRANSMIT_STATUS_RECEIVED)
-                provisionComplete(node)
+            if (provisionedNode || isSending) {
+                provisionedNode = false
+                isNetworkRetransmitSetCompleted = true
+                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.NETWORK_TRANSMIT_STATUS_RECEIVED)
+                if (isSending) bindNodeKeyComplete(node)
             } else {
                 updateNode(node)
-                mMeshMessageLiveData.postValue(meshMessage)
+                meshMessageLiveData.postValue(meshMessage)
             }
         } else if (meshMessage is ConfigModelAppStatus) {
             if (updateNode(node)) {
@@ -804,11 +790,12 @@ class NrfMeshRepository(
                 val element =
                     node.elements[status.elementAddress]
                 if (node.elements.containsKey(status.elementAddress)) {
-                    mSelectedElement.postValue(element)
+                    selectedElement.postValue(element)
                     val model = element!!.meshModels[status.modelIdentifier]
-                    mSelectedModel.postValue(model)
-                    bindAppKeyComplete(node, element, model!!)
+                    selectedModel.postValue(model)
+
                 }
+                if (isSending) bindAppKeyComplete(node)
             }
         } else if (meshMessage is ConfigModelPublicationStatus) {
             if (updateNode(node)) {
@@ -817,10 +804,10 @@ class NrfMeshRepository(
                 if (node.elements.containsKey(status.elementAddress)) {
                     val element =
                         node.elements[status.elementAddress]
-                    mSelectedElement.postValue(element)
+                    selectedElement.postValue(element)
                     val model = element!!.meshModels[status.modelIdentifier]
-                    mSelectedModel.postValue(model)
-                    setPublicationComplete(node, element, model!!)
+                    selectedModel.postValue(model)
+                    if (isSending) setPublicationComplete(node)
                 }
             }
         } else if (meshMessage is ConfigModelSubscriptionStatus) {
@@ -830,24 +817,24 @@ class NrfMeshRepository(
                 if (node.elements.containsKey(status.elementAddress)) {
                     val element =
                         node.elements[status.elementAddress]
-                    mSelectedElement.postValue(element)
+                    selectedElement.postValue(element)
                     val model = element!!.meshModels[status.modelIdentifier]
-                    mSelectedModel.postValue(model)
+                    selectedModel.postValue(model)
                 }
             }
         } else if (meshMessage is ConfigNodeResetStatus) {
-            mBleMeshManager.setClearCacheRequired()
-            mExtendedMeshNode!!.postValue(null)
+            bleMeshManager.setClearCacheRequired()
+            extendedMeshNode!!.postValue(null)
             loadNodes()
-            mMeshMessageLiveData.postValue(meshMessage)
+            meshMessageLiveData.postValue(meshMessage)
             resetNode()
         } else if (meshMessage is ConfigRelayStatus) {
             if (updateNode(node)) {
-                mMeshMessageLiveData.postValue(meshMessage)
+                meshMessageLiveData.postValue(meshMessage)
             }
         } else if (meshMessage is ConfigProxyStatus) {
             if (updateNode(node)) {
-                mMeshMessageLiveData.postValue(meshMessage)
+                meshMessageLiveData.postValue(meshMessage)
             }
         } else if (meshMessage is GenericOnOffStatus) {
             if (updateNode(node)) {
@@ -855,10 +842,10 @@ class NrfMeshRepository(
                 if (node.elements.containsKey(status.srcAddress)) {
                     val element =
                         node.elements[status.srcAddress]
-                    mSelectedElement.postValue(element)
+                    selectedElement.postValue(element)
                     val model =
                         element!!.meshModels[SigModelParser.GENERIC_ON_OFF_SERVER.toInt()]
-                    mSelectedModel.postValue(model)
+                    selectedModel.postValue(model)
                 }
             }
         } else if (meshMessage is GenericLevelStatus) {
@@ -867,70 +854,63 @@ class NrfMeshRepository(
                 if (node.elements.containsKey(status.srcAddress)) {
                     val element =
                         node.elements[status.srcAddress]
-                    mSelectedElement.postValue(element)
+                    selectedElement.postValue(element)
                     val model =
                         element!!.meshModels[SigModelParser.GENERIC_LEVEL_SERVER.toInt()]
-                    mSelectedModel.postValue(model)
+                    selectedModel.postValue(model)
                 }
             }
         }
-        if (mMeshMessageLiveData.hasActiveObservers()) {
-            mMeshMessageLiveData.postValue(meshMessage)
+        if (meshMessageLiveData.hasActiveObservers()) {
+            meshMessageLiveData.postValue(meshMessage)
         }
         //Refresh mesh network live data
-        mMeshNetworkLiveData.refresh(mMeshManagerApi.meshNetwork!!)
+        meshNetworkLiveData.refresh(meshManagerApi.meshNetwork!!)
     }
 
 
     /**
      * Received all vendor status and check types
      **/
-    override fun onMeshMessageReceived(src: Int, original: MeshMessage, accessMessage: AccessMessage) {
-        val node = mMeshNetwork!!.getNode(src)
+    override fun onMeshMessageReceived(src: Int, original: MeshMessage?, accessMessage: AccessMessage) {
+        val node = meshNetwork!!.getNode(src)
         if (node != null) {
             var status: GenericStatusMessage? = null
             val opCode = MeshParserUtils.unsignedByteToInt(accessMessage.accessPdu[0])
             if (opCode == OpCodes.NT_OPCODE_EVENT) {
                 status = NodeEventStatus(accessMessage)
-                if (mEventMessageLiveData.hasActiveObservers()) {
-                    mEventMessageLiveData.postValue(status)
+                if (eventMessageLiveData.hasActiveObservers()) {
+                    eventMessageLiveData.postValue(status)
                 }
             } else {
                 var status: VendorModelMessageStatus? = null
-                when (original) {
-                    is NodeGetMessage -> { // Status message
-                        status = NodeGetMessageStatus(accessMessage, original.modelIdentifier)
-                    }
-                    is NodeConfigMessage -> { // Configuration node message
-                        status = NodeConfigMessageStatus(accessMessage, original.modelIdentifier)
-                    }
-                    is NodeControlMessage -> { // Control message
-                        status = NodeControlMessageStatus(accessMessage, original.modelIdentifier)
-                    }
-                    is NodePeripheralMessage -> { // set peripheral message
-                        status = NodePeripheralMessageStatus(accessMessage, original.modelIdentifier)
-                    }
-                    is VendorModelMessageStatus -> { // Standard or unknown message
-                        status = defaultVendorMessage(src, original, accessMessage)
-                    }
+                val modelIdentifier = if (original is VendorModelMessageAcked) original.modelIdentifier else 0
+                when (opCode) {
+                    OpCodes.NT_OPCODE_GENERAL_STATUS -> status = NodeGetMessageStatus(accessMessage, modelIdentifier)
+                    OpCodes.NT_OPCODE_CONFIG_STATUS -> status = NodeConfigMessageStatus(accessMessage, modelIdentifier)
+                    OpCodes.NT_OPCODE_SYSTEM_STATUS -> status = NodeControlMessageStatus(accessMessage, modelIdentifier)
+                    OpCodes.NT_OPCODE_PERIFERAL_STATUS -> status = NodePeripheralMessageStatus(accessMessage, modelIdentifier)
                 }
                 update(node, status)
-                if (mMeshMessageLiveData.hasActiveObservers()) {
-                    mMeshMessageLiveData.postValue(status)
+                if (meshMessageLiveData.hasActiveObservers()) {
+                    meshMessageLiveData.postValue(status)
+                }
+                if (keepMessageLiveData.hasActiveObservers() && status is NodeConfigMessageStatus) {
+                    keepMessageLiveData.postValue(status)
                 }
             }
         }
         // Refresh mesh network live data
-        mMeshNetworkLiveData.refresh(mMeshManagerApi.meshNetwork!!)
+        meshNetworkLiveData.refresh(meshManagerApi.meshNetwork!!)
     }
 
     private fun update(node: ProvisionedMeshNode, status: VendorModelMessageStatus?) {
         if (updateNode(node)) {
             if (status != null && node.elements.containsKey(status.srcAddress)) {
                 val element = node.elements[status.srcAddress]
-                mSelectedElement.postValue(element)
+                selectedElement.postValue(element)
                 val model = element!!.meshModels[status.modelIdentifier]
-                mSelectedModel.postValue(model)
+                selectedModel.postValue(model)
             }
         }
     }
@@ -959,20 +939,20 @@ class NrfMeshRepository(
      * @param meshNetwork mesh network that was loaded
      */
     private fun loadNetwork(meshNetwork: MeshNetwork) {
-        mMeshNetwork = meshNetwork
-        if (mMeshNetwork != null) {
-            if (!mMeshNetwork!!.isProvisionerSelected) {
+        this.meshNetwork = meshNetwork
+        if (this.meshNetwork != null) {
+            if (!this.meshNetwork!!.isProvisionerSelected) {
                 val provisioner = meshNetwork.provisioners[0]
                 provisioner.isLastSelected = true
-                mMeshNetwork!!.selectProvisioner(provisioner)
+                this.meshNetwork!!.selectProvisioner(provisioner)
             }
             //Load live data with mesh network
-            mMeshNetworkLiveData.loadNetworkInformation(meshNetwork)
+            meshNetworkLiveData.loadNetworkInformation(meshNetwork)
             //Load live data with provisioned nodes
             loadNodes()
             val node = getSelectedMeshNode()!!.value
             if (node != null) {
-                mExtendedMeshNode!!.postValue(mMeshNetwork!!.getNode(node.uuid))
+                extendedMeshNode!!.postValue(this.meshNetwork!!.getNode(node.uuid))
             }
         }
     }
@@ -981,9 +961,9 @@ class NrfMeshRepository(
      * We should only update the selected node, since sending messages to group address will notify with nodes that is not on the UI
      */
     private fun updateNode(node: ProvisionedMeshNode): Boolean {
-        if (mProvisionedMeshNode!!.unicastAddress == node.unicastAddress) {
-            mProvisionedMeshNode = node
-            mExtendedMeshNode!!.postValue(node)
+        if (provisionedMeshNode?.unicastAddress == node.unicastAddress) {
+            provisionedMeshNode = node
+            extendedMeshNode?.postValue(node)
             return true
         }
         return false
@@ -994,8 +974,8 @@ class NrfMeshRepository(
      */
     private fun startScan(scanCallback: ScanCallback = getDefaultScanCallback()) {
         this.scanCallback = scanCallback
-        if (mIsScanning) return
-        mIsScanning = true
+        if (isScanning) return
+        isScanning = true
         // Scanning settings
         val settings =
             ScanSettings.Builder()
@@ -1015,17 +995,17 @@ class NrfMeshRepository(
         val scanner = BluetoothLeScannerCompat.getScanner()
         scanner.startScan(filters, settings, scanCallback)
         Log.v(TAG, "Scan started")
-        mHandler.postDelayed(mScannerTimeout, 20000)
+        handler.postDelayed(scannerTimeout, 20000)
     }
 
     /**
      * stop scanning for bluetooth devices.
      */
     private fun stopScan() {
-        mHandler.removeCallbacks(mScannerTimeout)
+        handler.removeCallbacks(scannerTimeout)
         val scanner = BluetoothLeScannerCompat.getScanner()
         scanner.stopScan(scanCallback)
-        mIsScanning = false
+        isScanning = false
     }
 
     private var scanCallback: ScanCallback = getDefaultScanCallback()
@@ -1043,9 +1023,9 @@ class NrfMeshRepository(
                     val serviceData: ByteArray? =
                         Utils.getServiceData(result, Constants.MESH_PROXY_UUID)
                     if (serviceData != null) {
-                        if (mMeshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
-                            val node = mProvisionedMeshNode
-                            if (mMeshManagerApi.nodeIdentityMatches(node!!, serviceData)) {
+                        if (meshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
+                            val node = provisionedMeshNode
+                            if (meshManagerApi.nodeIdentityMatches(node!!, serviceData)) {
                                 stopScan()
                                 onProvisionedDeviceFound(node, ExtendedBluetoothDevice(result))
                             }
@@ -1071,12 +1051,12 @@ class NrfMeshRepository(
                     result.scanRecord
                 if (scanRecord != null) {
                     val serviceData = Utils.getServiceData(result, Constants.MESH_PROXY_UUID)
-                    if (mMeshManagerApi.isAdvertisingWithNetworkIdentity(serviceData)) {
-                        if (mMeshManagerApi.networkIdMatches(networkId, serviceData)) {
+                    if (meshManagerApi.isAdvertisingWithNetworkIdentity(serviceData)) {
+                        if (meshManagerApi.networkIdMatches(networkId, serviceData)) {
                             stopScan()
                             connect(context, ExtendedBluetoothDevice(result), true)
                         }
-                    } else if (mMeshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
+                    } else if (meshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
                         if (checkIfNodeIdentityMatches(serviceData!!)) {
                             stopScan()
                             connect(context, ExtendedBluetoothDevice(result), true)
@@ -1092,20 +1072,20 @@ class NrfMeshRepository(
         }
 
     private fun getNetworkId(): String {
-        val network = mMeshManagerApi.meshNetwork
+        val network = meshManagerApi.meshNetwork
         if (network != null) {
             if (!network.netKeys.isEmpty()) {
-                return mMeshManagerApi.generateNetworkId(network.netKeys[0].key)
+                return meshManagerApi.generateNetworkId(network.netKeys[0].key)
             }
         }
         return ""
     }
 
     private fun checkIfNodeIdentityMatches(serviceData: ByteArray): Boolean {
-        val network = mMeshManagerApi.meshNetwork
+        val network = meshManagerApi.meshNetwork
         if (network != null) {
             for (node in network.nodes) {
-                if (mMeshManagerApi.nodeIdentityMatches(node, serviceData)) {
+                if (meshManagerApi.nodeIdentityMatches(node, serviceData)) {
                     return true
                 }
             }
@@ -1117,25 +1097,25 @@ class NrfMeshRepository(
         node: ProvisionedMeshNode?,
         device: ExtendedBluetoothDevice
     ) {
-        mSetupProvisionedNode = true
-        mProvisionedMeshNode = node
-        mIsReconnectingFlag = true
+        provisionedNode = true
+        provisionedMeshNode = node
+        isReconnectingFlag = true
         //Added an extra delay to ensure reconnection
-        mHandler.postDelayed({ connectToProxy(device) }, 2000)
+        handler.postDelayed({ connectToProxy(device) }, 2000)
     }
 
     /**
      * Generates the groups based on the addresses each models have subscribed to
      */
     private fun loadGroups() {
-        mGroups.postValue(mMeshNetwork!!.groups)
+        groups.postValue(meshNetwork!!.groups)
     }
 
     private fun updateSelectedGroup() {
         val selectedGroup =
-            mSelectedGroupLiveData.value
+            selectedGroupLiveData.value
         if (selectedGroup != null) {
-            mSelectedGroupLiveData.postValue(mMeshNetwork!!.getGroup(selectedGroup.address))
+            selectedGroupLiveData.postValue(meshNetwork!!.getGroup(selectedGroup.address))
         }
     }
 
@@ -1143,9 +1123,9 @@ class NrfMeshRepository(
      * Sets the group that was selected from the GroupAdapter.
      */
     fun setSelectedGroup(address: Int) {
-        val group = mMeshNetwork!!.getGroup(address)
+        val group = meshNetwork!!.getGroup(address)
         if (group != null) {
-            mSelectedGroupLiveData.postValue(group)
+            selectedGroupLiveData.postValue(group)
         }
     }
 

@@ -10,9 +10,10 @@ enum class Status(val priority: Int, private var text: String) {
     NODE_FOUND(5, "Provisioned node found"),
     PROVISIONING_FAILED(6, "Provisioning failed"),
     PROVISIONING_PROGRESS(7, "Provisioning in progress..."),
-    BINDING_KEY(8, "Binding key..."),
-    SET_PUBLISH_ADDRESS(9, "Setting pusblishing address"),
-    FULL_CONFIGURED(10, "Configured successfully");
+    SETTING(8, "Setting data..."),
+    BINDING_APP_KEY(9, "Binding app key..."),
+    SET_PUBLISH_ADDRESS(10, "Setting publishing address"),
+    FULL_CONFIGURED(11, "Configured successfully");
 
     fun getValue() = text
 

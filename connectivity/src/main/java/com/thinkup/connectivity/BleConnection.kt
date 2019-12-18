@@ -7,8 +7,11 @@ import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 interface BleConnection {
+    fun settings(): BleSetting
     // connection status
     fun isConnected(): LiveData<Boolean>
+
+    fun getBatteryAverage(): LiveData<Int?>
 
     fun checkConnectivity(): Boolean
 

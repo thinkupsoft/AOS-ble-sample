@@ -1,76 +1,76 @@
 package com.thinkup.blesample.ui
 
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.CheckBox
 import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.thinkup.blesample.R
 import com.thinkup.blesample.renderers.DeviceRenderer
+import com.thinkup.blesample.renderers.DividerHelper
 import com.thinkup.blesample.renderers.NodeRenderer
 import com.thinkup.connectivity.BleNode
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
-import com.thinkup.connectivity.utils.TimeoutLiveData
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.toolbar.*
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
 
-class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.Callback {
+class MainActivity : BaseActivity(), DeviceRenderer.Callback, NodeRenderer.Callback {
 
-    val SCANNER_REQUEST = 100
-    val GROUPS_REQUEST = 101
-    val DETAIL_REQUEST = 102
     val adapter = RendererAdapter()
     val bleNode: BleNode by inject()
-
-    private fun startConnection() {
-        toolbar.title = title
-        connectionStatus.text = if (bleNode.isConnected()?.value == true) "Connected" else "Disconnected"
-        connectionStatus.setOnClickListener {
-            if (bleNode.isConnected()?.value == true) bleNode.disconnect()
-            else bleNode.autoConnect()
-        }
-        bleNode.isConnected()?.observe(this, Observer {
-            connectionStatus.text = if (bleNode.isConnected()?.value == true) {
-                "Connected"
-            } else {
-                bleNode.autoConnect()
-                "Disconnected"
-            }
-        })
-    }
+    override fun title(): String = "Neural BLE"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        startConnection()
         addNodeButton.setOnClickListener {
             startActivityForResult(Intent(this, ScannerActivity::class.java), SCANNER_REQUEST)
         }
         groupsButton.setOnClickListener {
             startActivityForResult(Intent(this, GroupsActivity::class.java), GROUPS_REQUEST)
         }
-        forceDeleteButton.visibility = View.GONE
-        forceDeleteButton.setOnClickListener {
-            //bleNode.forceDelete(2.toInt())
-//            TimeoutLiveData(2000, false).observe(this, Observer {
-//                Toast.makeText(this, "Get: ${it}", Toast.LENGTH_SHORT).show()
-//            })
-        }
-
         provisionedNodes.layoutManager = LinearLayoutManager(this)
         provisionedNodes.adapter = adapter
+        provisionedNodes.addItemDecoration(DividerHelper(this))
         adapter.addRenderer(NodeRenderer(this))
+        settings()
         updateList()
     }
 
+    private fun settings() {
+        bleNode.settings()
+        settingsButton.setOnClickListener {
+            val checkboxLayout: View = layoutInflater.inflate(R.layout.item_settings, null)
+            (checkboxLayout.findViewById(R.id.startSetting) as CheckBox).isChecked = bleNode.settings().enabledStartConfig()
+            (checkboxLayout.findViewById(R.id.keepSetting) as CheckBox).isChecked = bleNode.settings().enabledKeepAlive()
+            (checkboxLayout.findViewById(R.id.configSetting) as CheckBox).isChecked = bleNode.settings().enabledProvisionConfig()
+            AlertDialog.Builder(this)
+                .setView(checkboxLayout)
+                .setTitle("Settings")
+                .setMessage("Choose your preferences")
+                .setPositiveButton("OK") { _, _ ->
+                    bleNode.settings().set(
+                        (checkboxLayout.findViewById(R.id.startSetting) as CheckBox).isChecked,
+                        (checkboxLayout.findViewById(R.id.keepSetting) as CheckBox).isChecked,
+                        (checkboxLayout.findViewById(R.id.configSetting) as CheckBox).isChecked
+                    )
+                }
+                .create().show()
+
+        }
+    }
+
     private fun updateList() {
-        bleNode.getProvisionedNodes().observe(this, Observer {
-            adapter.setItems(it)
+        bleNode.getProvisionedNodes().observe(this, Observer { list ->
+            identify.setOnClickListener { bleNode.identify(list) }
+            adapter.setItems(list)
         })
     }
 
@@ -78,6 +78,10 @@ class MainActivity : AppCompatActivity(), DeviceRenderer.Callback, NodeRenderer.
 
     override fun onDelete(node: ProvisionedMeshNode) {
         bleNode.delete(node)
+    }
+
+    override fun onForceDelete(node: ProvisionedMeshNode) {
+        bleNode.deleteDB(node)
     }
 
     override fun onClick(node: ProvisionedMeshNode) {

@@ -10,7 +10,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_margin="10dp"
-            android:weightSum="3">
+            android:weightSum="4">
 
         <TextView
                 android:layout_width="0dp"
@@ -29,12 +29,19 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Time" />
+
+        <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Date" />
     </LinearLayout>
 
     <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="10dp">
+            android:layout_margin="10dp"
+            android:weightSum="4">
 
         <TextView
                 android:id="@+id/address"
@@ -59,6 +66,14 @@
                 android:layout_weight="1"
                 android:textStyle="bold"
                 tools:text="000003" />
+
+        <TextView
+                android:id="@+id/date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textStyle="bold"
+                tools:text="00:00:00.000" />
     </LinearLayout>
     <View
             android:layout_width="match_parent"

@@ -1,13 +1,13 @@
 package com.thinkup.connectivity.mesh
 
 import android.content.Context
+import android.os.Handler
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
 import no.nordicsemi.android.meshprovisioner.provisionerstates.UnprovisionedMeshNode
-import no.nordicsemi.android.meshprovisioner.transport.Element
-import no.nordicsemi.android.meshprovisioner.transport.MeshModel
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 fun NrfMeshRepository.resetNode() {
+    isSending = false
     nodeCallback?.onDelete()
 }
 
@@ -16,40 +16,49 @@ fun NrfMeshRepository.provision(
     device: ExtendedBluetoothDevice,
     provisionCallback: ProvisionCallback
 ) {
+    isSending = true
     this.provisionCallback = provisionCallback
-    connect(context, device, false)
+    disconnect()
+    Handler().postDelayed({ connect(context, device, false) }, 1000)
 }
 
-fun NrfMeshRepository.deviceReadyProvision() {
+fun NrfMeshRepository.deviceReadyProvision(isProvisioning: Boolean) {
+    this.isSending = isProvisioning
     provisionCallback?.deviceReady()
 }
 
-fun NrfMeshRepository.deviceFailProvision() {
+fun NrfMeshRepository.deviceFailProvision(isProvisioning: Boolean) {
+    this.isSending = isProvisioning
     provisionCallback?.deviceFail()
 }
 
 fun NrfMeshRepository.identifyProvision(node: UnprovisionedMeshNode) {
+    isSending = true
     provisionCallback?.identify(node)
 }
 
 fun NrfMeshRepository.provisionFail() {
+    isSending = false
     provisionCallback?.provisionFail()
 }
 
 fun NrfMeshRepository.provisionComplete(meshNode: ProvisionedMeshNode) {
+    isSending = true
     provisionCallback?.provisionComplete(meshNode)
 }
 
 fun NrfMeshRepository.bindNodeKeyComplete(meshNode: ProvisionedMeshNode) {
+    isSending = true
     provisionCallback?.bindNodeKeyComplete(meshNode)
 }
 
-fun NrfMeshRepository.bindAppKeyComplete(meshNode: ProvisionedMeshNode, element: Element, model: MeshModel) {
-    provisionCallback?.bindAppKeyComplete(meshNode, element, model)
+fun NrfMeshRepository.bindAppKeyComplete(meshNode: ProvisionedMeshNode) {
+    isSending = true
+    provisionCallback?.bindAppKeyComplete(meshNode)
 }
 
-fun NrfMeshRepository.setPublicationComplete(meshNode: ProvisionedMeshNode, element: Element, model: MeshModel) {
-    provisionCallback?.setPublicationComplete(meshNode, element, model)
+fun NrfMeshRepository.setPublicationComplete(meshNode: ProvisionedMeshNode) {
+    provisionCallback?.setPublicationComplete(meshNode)
 }
 
 interface ProvisionCallback {
@@ -59,8 +68,8 @@ interface ProvisionCallback {
     fun provisionFail()
     fun provisionComplete(meshNode: ProvisionedMeshNode)
     fun bindNodeKeyComplete(meshNode: ProvisionedMeshNode)
-    fun bindAppKeyComplete(meshNode: ProvisionedMeshNode, element: Element, model: MeshModel)
-    fun setPublicationComplete(meshNode: ProvisionedMeshNode, element: Element, model: MeshModel)
+    fun bindAppKeyComplete(meshNode: ProvisionedMeshNode)
+    fun setPublicationComplete(meshNode: ProvisionedMeshNode)
 }
 
 interface NodeCallback {

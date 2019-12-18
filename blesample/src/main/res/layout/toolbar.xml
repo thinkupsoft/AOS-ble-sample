@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.Toolbar xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?actionBarSize"
+        android:background="@drawable/item_divider"
+        android:gravity="center_vertical"
+        app:layout_constraintTop_toTopOf="parent">
+
+    <ImageView
+            android:id="@+id/connectionStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:contentDescription="Connection status"
+            android:gravity="end"
+            android:paddingStart="5dp"
+            android:paddingEnd="10dp"
+            android:src="@drawable/ic_bluetooth_disabled_black" />
+
+    <ImageView
+            android:id="@+id/identify"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:contentDescription="Identify nodes"
+            android:gravity="end"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:src="@drawable/ic_device_identify" />
+
+    <TextView
+            android:id="@+id/battery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:drawableEnd="@drawable/ic_battery_unknown"
+            android:gravity="end|bottom"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:text="0%"
+            android:textAlignment="center"
+            android:textSize="16sp" />
+</androidx.appcompat.widget.Toolbar>

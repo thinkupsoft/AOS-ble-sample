@@ -1,48 +1,31 @@
 package com.thinkup.blesample.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.thinkup.blesample.R
+import com.thinkup.blesample.renderers.DividerHelper
 import com.thinkup.blesample.renderers.GroupRenderer
 import com.thinkup.connectivity.BleGroup
-import com.thinkup.connectivity.impl.BleGroupImpl
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_groups.*
+import kotlinx.android.synthetic.main.toolbar.*
 import no.nordicsemi.android.meshprovisioner.Group
-import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.ConfigModelSubscriptionStatus
-import no.nordicsemi.android.meshprovisioner.transport.MeshModel
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
-import org.koin.android.viewmodel.ext.android.viewModel
 
-class GroupsActivity : AppCompatActivity(), GroupRenderer.Callback {
+class GroupsActivity : BaseActivity(), GroupRenderer.Callback {
 
     val adapter = RendererAdapter()
     val viewModel: BleGroup by inject()
     var char = 'A'
 
-    private fun startConnection() {
-        toolbar.title = title
-        connectionStatus.text = if (viewModel.isConnected()?.value == true) "Connected" else "Disconnected"
-        connectionStatus.setOnClickListener {
-            if (viewModel.isConnected()?.value == true) viewModel.disconnect()
-            else viewModel.autoConnect()
-        }
-        viewModel.isConnected()?.observe(this, Observer {
-            connectionStatus.text = if (viewModel.isConnected()?.value == true) {
-                "Connected"
-            } else {
-                viewModel.autoConnect()
-                "Disconnected"
-            }
-        })
-    }
+    override fun title(): String = "Groups"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,15 +33,16 @@ class GroupsActivity : AppCompatActivity(), GroupRenderer.Callback {
         addGroup.setOnClickListener {
             viewModel.addGroup("Grupo $char")
         }
-        startConnection()
         updateMessage()
 
         listGroups.layoutManager = LinearLayoutManager(this)
         listGroups.adapter = adapter
+        listGroups.addItemDecoration(DividerHelper(this))
         adapter.addRenderer(GroupRenderer(this))
 
         viewModel.getGroups().observe(this, Observer {
             if (it.isNotEmpty()) {
+                identify.setOnClickListener { v -> viewModel.identify(it) }
                 listGroups.visibility = View.VISIBLE
                 emptygroups.visibility = View.GONE
                 adapter.setItems(it)
@@ -92,8 +76,8 @@ class GroupsActivity : AppCompatActivity(), GroupRenderer.Callback {
 
     override fun onSubscribe(item: Group) {
         val nodes = viewModel.getNodes()
-        val arrayAdapter = ArrayAdapter<ProvisionedMeshNode>(this, android.R.layout.select_dialog_singlechoice)
-        arrayAdapter.addAll(nodes ?: mutableListOf())
+        val arrayAdapter = ArrayAdapter<String>(this, android.R.layout.select_dialog_singlechoice)
+        arrayAdapter.addAll(nodes?.map { "Node ${it.nodeName}" } ?: mutableListOf())
         AlertDialog.Builder(this)
             .setAdapter(arrayAdapter) { p0, p1 ->
                 val node = nodes?.get(p1)
@@ -101,19 +85,18 @@ class GroupsActivity : AppCompatActivity(), GroupRenderer.Callback {
             }.show()
     }
 
-    override fun onDeleteItem(item: Group, model: VendorModel) {
-        viewModel.removeGroupNode(item, model)
+    override fun onDeleteItem(item: Group, meshNode: ProvisionedMeshNode) {
+        viewModel.removeGroupNode(item, meshNode)
     }
 
-    override fun getModels(item: Group): List<MeshModel> {
+    override fun getModels(item: Group): List<ProvisionedMeshNode> {
         return viewModel.getGroupNodes(item)
     }
 
-    override fun onGetStatus(item: Group, model: List<MeshModel>) {
-        viewModel.getStatus(item, model[0] as VendorModel)
-    }
-
-    override fun onGetTtl(item: Group) {
-        viewModel.getTtl(item)
+    override fun onMore(item: Group) {
+        val intent = Intent(this, GroupDetailActivity::class.java).apply {
+            putExtra(GroupDetailActivity.GROUP, item)
+        }
+        startActivityForResult(intent, GroupDetailActivity.GROUP_INTENT)
     }
 }

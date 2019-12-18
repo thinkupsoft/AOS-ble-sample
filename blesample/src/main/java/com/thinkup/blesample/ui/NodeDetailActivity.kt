@@ -1,10 +1,9 @@
 package com.thinkup.blesample.ui
 
-import androidx.appcompat.app.AppCompatActivity
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -21,10 +20,11 @@ import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
 import com.thinkup.connectivity.messges.status.NodeGetMessageStatus
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_node_detail.*
+import kotlinx.android.synthetic.main.toolbar.*
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
 
-class NodeDetailActivity : AppCompatActivity() {
+class NodeDetailActivity : BaseActivity() {
 
     companion object {
         const val NODE = "node"
@@ -35,29 +35,13 @@ class NodeDetailActivity : AppCompatActivity() {
     val adapter = RendererAdapter()
     val list = mutableListOf<NodeEventStatus>()
 
-    private fun startConnection() {
-        toolbar.title = title
-        connectionStatus.text = if (bleNode.isConnected()?.value == true) "Connected" else "Disconnected"
-        connectionStatus.setOnClickListener {
-            if (bleNode.isConnected()?.value == true) bleNode.disconnect()
-            else bleNode.autoConnect()
-        }
-        bleNode.isConnected()?.observe(this, Observer {
-            connectionStatus.text = if (bleNode.isConnected()?.value == true) {
-                "Connected"
-            } else {
-                bleNode.autoConnect()
-                "Disconnected"
-            }
-        })
-    }
+    override fun title(): String = "Node ${node?.nodeName}"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_node_detail)
-        startConnection()
-
         node = intent.getParcelableExtra(NODE)
+        identify.setOnClickListener { bleNode.identify(node!!) }
         startUI()
 
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -123,7 +107,7 @@ class NodeDetailActivity : AppCompatActivity() {
                     periferalResponse.text = it.toString()
                 }
                 it is NodeGetMessageStatus -> {
-                    Toast.makeText(this, it.toString(), Toast.LENGTH_LONG).show()
+                    statusResponse.text = "RESPONSE: $it"
                 }
             }
         })
@@ -162,7 +146,6 @@ class NodeDetailActivity : AppCompatActivity() {
 
     private fun startBase() {
         nodeStatus.setOnClickListener { bleNode.getStatus(node!!) }
-        nodeTtl.setOnClickListener { bleNode.getTtl(node!!) }
     }
 
     private fun startControl() {
@@ -211,7 +194,7 @@ class NodeDetailActivity : AppCompatActivity() {
                 node!!,
                 id = if (nodeIdText.text.toString().isNullOrEmpty()) NO_CONFIG else nodeIdText.text.toString().toInt(),
                 timeoutConfig = if (timeout.value == 0) NO_CONFIG else ConfigParams.TIMEOUT_CONFIG,
-                timeout = timeout.value
+                timeout = timeout.value * 1000 // to milliseconds
             )
         }
     }

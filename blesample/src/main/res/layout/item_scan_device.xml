@@ -15,6 +15,17 @@
             tools:text="Node 1" />
 
     <TextView
+            android:id="@+id/deviceStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@+id/deviceName"
+            android:layout_marginStart="20dp"
+            android:drawableStart="@drawable/ic_state_offline"
+            android:drawablePadding="5dp"
+            android:layout_alignBaseline="@+id/deviceName"
+            android:text="Offline"/>
+
+    <TextView
             android:id="@+id/deviceAddress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

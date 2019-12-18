@@ -6,28 +6,17 @@
         android:layout_height="match_parent"
         tools:context=".ui.NodeDetailActivity">
 
-    <androidx.appcompat.widget.Toolbar
+    <include
             android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?actionBarSize"
-            app:layout_constraintTop_toTopOf="parent">
-
-        <Button
-                android:id="@+id/connectionStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:gravity="end" />
-    </androidx.appcompat.widget.Toolbar>
+            layout="@layout/toolbar" />
 
     <LinearLayout
             android:id="@+id/topButtons"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/toolbar">
+            app:layout_constraintBottom_toBottomOf="parent">
 
         <Button
                 android:id="@+id/nodeStatus"
@@ -35,15 +24,15 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="40dp"
                 android:text="Get status"
+                android:layout_margin="8dp"
                 app:layout_constraintStart_toStartOf="parent" />
 
-        <Button
-                android:id="@+id/nodeTtl"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Get TTL"
-                app:layout_constraintStart_toEndOf="@id/nodeStatus"
-                app:layout_constraintTop_toBottomOf="@+id/toolbar" />
+        <TextView
+                android:id="@+id/statusResponse"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="RESPONSE: "/>
+
     </LinearLayout>
 
     <com.google.android.material.tabs.TabLayout
@@ -52,7 +41,7 @@
             android:layout_height="wrap_content"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/topButtons">
+            app:layout_constraintTop_toBottomOf="@+id/toolbar">
 
         <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
@@ -79,7 +68,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:fillViewport="true"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/topButtons"
             app:layout_constraintTop_toBottomOf="@+id/tabs">
 
         <RelativeLayout

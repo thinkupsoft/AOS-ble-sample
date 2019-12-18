@@ -1,10 +1,8 @@
 package com.thinkup.connectivity.messges.status
 
 import com.thinkup.connectivity.messges.OpCodes
-import dalvik.bytecode.Opcodes
-import no.nordicsemi.android.meshprovisioner.ApplicationKey
-import no.nordicsemi.android.meshprovisioner.transport.*
-import no.nordicsemi.android.meshprovisioner.utils.SecureUtils
+import no.nordicsemi.android.meshprovisioner.transport.AccessMessage
+import no.nordicsemi.android.meshprovisioner.transport.VendorModelMessageStatus
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 

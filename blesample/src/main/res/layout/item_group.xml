@@ -3,7 +3,6 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="4"
         android:orientation="horizontal">
 
     <TextView
@@ -51,28 +50,22 @@
             android:layout_height="wrap_content"
             android:layout_below="@+id/groupModels" />
 
-    <Button
-            android:id="@+id/groupTtl"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/groupNodes"
-            android:layout_toStartOf="@+id/groupStatus"
-            android:text="Get ttl" />
 
-    <Button
-            android:id="@+id/groupStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/groupNodes"
-            android:layout_toStartOf="@+id/groupSubscribe"
-            android:text="Get status" />
     <Button
             android:id="@+id/groupSubscribe"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@+id/groupNodes"
-            android:layout_alignParentEnd="true"
+            android:layout_toStartOf="@+id/groupMore"
             android:text="Add node" />
+
+    <Button
+            android:id="@+id/groupMore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/groupNodes"
+            android:layout_alignParentEnd="true"
+            android:text="More" />
 
 
 </RelativeLayout>

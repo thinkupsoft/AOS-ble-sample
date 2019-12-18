@@ -42,13 +42,16 @@ dependencies {
 
     // Koin
     compileOnly "org.koin:koin-android-viewmodel:$koin_version"
+    // Coroutine
+    compileOnly 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.3'
+    compileOnly 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.3'
 
     // Brings the new BluetoothLeScanner API to older platforms
     implementation 'no.nordicsemi.android.support.v18:scanner:1.4.3'
     // Android BLE Library
     implementation 'no.nordicsemi.android:ble:2.1.1'
     // nRF Mesh TKU fork
-    api 'com.github.thinkupsoft:Android-nRF-Mesh-Library:v2.1.13'
+    api 'com.github.thinkupsoft:Android-nRF-Mesh-Library:v2.1.17'
 
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'

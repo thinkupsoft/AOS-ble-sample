@@ -20,7 +20,8 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/AppTheme.NoActionBar">
-        <activity android:name=".ui.NodeDetailActivity"></activity>
+        <activity android:name=".ui.GroupDetailActivity"></activity>
+        <activity android:name=".ui.NodeDetailActivity" />
         <activity android:name=".ui.GroupsActivity" />
         <activity android:name=".ui.ScannerActivity" />
         <activity android:name=".ui.MainActivity">
