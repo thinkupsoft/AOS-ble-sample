@@ -14,10 +14,10 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     BleConnection {
 
     protected val ACTION_TIMEOUT = 3 * 1000L // 3 sec
-    protected val STEP_TIMEOUT = 2 * 1000L // 1,5 sec
-    protected val PROVISION_TIMEOUT = 60 * 1000L // 30 sec - Timeout to provision step
-    protected val KEEP_ALIVE = 40 * 1000L // 30  sec - Time to send keep alive message
-    protected val KEEP_ALIVE_WAIT = 8 * 1000L // 30  sec - Time to send keep alive message
+    protected val STEP_TIMEOUT = 2 * 1000L // 2 sec
+    protected val PROVISION_TIMEOUT = 30 * 1000L // 30 sec - Timeout to provision step
+    protected val KEEP_ALIVE = 40 * 1000L // 40  sec - Time to send keep alive message
+    protected val KEEP_ALIVE_WAIT = 3 * 1000L // 3  sec - Time to recollect keep alive responses
     protected val BULK_DELAY = 100L
 
     override fun settings(): BleSetting = setting
@@ -58,7 +58,7 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
         try {
             if (!checkConnectivity()) autoConnect { sendMessage(unicastAddress, message) }
             else {
-                repository.getMeshManagerApi().createMeshPdu(unicastAddress, message)
+                repository.sendMessage(unicastAddress, message)
             }
         } catch (ex: IllegalArgumentException) {
             ex.printStackTrace()

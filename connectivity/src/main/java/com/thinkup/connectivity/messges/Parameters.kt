@@ -9,6 +9,7 @@ object ControlParams {
     const val RECALIBRAR = 0xB0
     const val SET_LED_ON = 0xC0
     const val SET_LED_OFF = 0xC1
+    const val KEEP_ALIVE = 0xD0
 }
 
 object ConfigParams {
@@ -105,6 +106,7 @@ object StatusParams {
 }
 
 enum class EventType(val value: Int, val text: String) {
+    HELLO(0x01, "HELLO"),
     HIT(0xa0, "HIT"),
     TIMEOUT(0xa1, "TIMEOUT"),
     LOW_BAT(0xb0, "LOW_BATTERY");

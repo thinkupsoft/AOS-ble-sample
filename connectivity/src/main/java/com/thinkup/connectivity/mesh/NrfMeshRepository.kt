@@ -62,6 +62,7 @@ class NrfMeshRepository(
     // Provisioning callback
     var provisionCallback: ProvisionCallback? = null
     // Is sending single/bulking message(s)
+    // is true when send a message or provision a node to avoid keep alive bulk messages
     var isSending: Boolean = false
     // Reset Callback
     var nodeCallback: NodeCallback? = null
@@ -101,7 +102,7 @@ class NrfMeshRepository(
     private val meshNetworkLiveData: MeshNetworkLiveData = MeshNetworkLiveData()
     private val networkImportState: SingleLiveEvent<String?> = SingleLiveEvent()
     private val meshMessageLiveData: SingleLiveEvent<MeshMessage?> = SingleLiveEvent()
-    private val keepMessageLiveData: SingleLiveEvent<NodeConfigMessageStatus?> = SingleLiveEvent()
+    private val keepMessageLiveData: SingleLiveEvent<NodeControlMessageStatus?> = SingleLiveEvent()
     private val eventMessageLiveData: ComparableSingleLiveData<NodeEventStatus> = ComparableSingleLiveData()
     // Contains the provisioned nodes
     private val provisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
@@ -121,9 +122,17 @@ class NrfMeshRepository(
     private var isNetworkRetransmitSetCompleted = false
     private val uri: Uri? = null
     private val reconnectRunnable = Runnable { startScan() }
-    private fun autoconnectRunnable(context: Context) = Runnable { startScan(getScanAutoCallback(getNetworkId(), context)) }
+    private fun autoconnectRunnable(context: Context) = Runnable {
+        scanAutoCallback = getScanAutoCallback(getNetworkId(), context)
+        startScan(scanAutoCallback, scannerAutoTimeout)
+    }
+
     private val scannerTimeout = Runnable {
         stopScan()
+        isReconnecting.postValue(false)
+    }
+    private val scannerAutoTimeout = Runnable {
+        stopAutoScan()
         isReconnecting.postValue(false)
     }
 
@@ -188,7 +197,7 @@ class NrfMeshRepository(
     /**
      * Returns the [MeshMessageLiveData] live data object containing the mesh message
      */
-    fun getKeepMessageLiveData(): LiveData<NodeConfigMessageStatus?> {
+    fun getKeepMessageLiveData(): LiveData<NodeControlMessageStatus?> {
         return keepMessageLiveData
     }
 
@@ -476,9 +485,10 @@ class NrfMeshRepository(
                         if (node != null) {
                             val compositionDataGet =
                                 ConfigCompositionDataGet()
-                            meshManagerApi.createMeshPdu(
+                            sendMessage(
                                 node.unicastAddress,
-                                compositionDataGet
+                                compositionDataGet,
+                                true
                             )
                         }
                     }, 2000)
@@ -644,6 +654,7 @@ class NrfMeshRepository(
             hasReload = true
             connecteds.find { it.nodeName == node.nodeName }?.let {
                 node.isOnline = true
+                node.batteryLevel = it.batteryLevel
             } ?: run {
                 node.isOnline = false
             }
@@ -736,7 +747,7 @@ class NrfMeshRepository(
                 provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.COMPOSITION_DATA_STATUS_RECEIVED)
                 handler.postDelayed({
                     val configDefaultTtlGet = ConfigDefaultTtlGet()
-                    meshManagerApi.createMeshPdu(node.unicastAddress, configDefaultTtlGet)
+                    sendMessage(node.unicastAddress, configDefaultTtlGet, true)
                 }, 500)
             } else {
                 updateNode(node)
@@ -751,7 +762,7 @@ class NrfMeshRepository(
                     val index = node.addedNetKeys[0].index
                     val networkKey = meshNetwork!!.netKeys[index]
                     val configAppKeyAdd = ConfigAppKeyAdd(networkKey, appKey!!)
-                    meshManagerApi.createMeshPdu(node.unicastAddress, configAppKeyAdd)
+                    sendMessage(node.unicastAddress, configAppKeyAdd, true)
                 }, 1500)
             } else {
                 updateNode(node)
@@ -767,7 +778,7 @@ class NrfMeshRepository(
                     handler.postDelayed({
                         val networkTransmitSet =
                             ConfigNetworkTransmitSet(2, 1)
-                        meshManagerApi.createMeshPdu(node.unicastAddress, networkTransmitSet)
+                        sendMessage(node.unicastAddress, networkTransmitSet, true)
                     }, 1500)
                 }
             } else {
@@ -895,7 +906,7 @@ class NrfMeshRepository(
                 if (meshMessageLiveData.hasActiveObservers()) {
                     meshMessageLiveData.postValue(status)
                 }
-                if (keepMessageLiveData.hasActiveObservers() && status is NodeConfigMessageStatus) {
+                if (keepMessageLiveData.hasActiveObservers() && status is NodeControlMessageStatus) {
                     keepMessageLiveData.postValue(status)
                 }
             }
@@ -972,30 +983,34 @@ class NrfMeshRepository(
     /**
      * Starts reconnecting to the device
      */
-    private fun startScan(scanCallback: ScanCallback = getDefaultScanCallback()) {
-        this.scanCallback = scanCallback
-        if (isScanning) return
-        isScanning = true
-        // Scanning settings
-        val settings =
-            ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY) // Refresh the devices list every second
-                .setReportDelay(0) // Hardware filtering has some issues on selected devices
-                .setUseHardwareFilteringIfSupported(false) // Samsung S6 and S6 Edge report equal value of RSSI for all devices. In this app we ignore the RSSI.
+    private fun startScan(scanCallback: ScanCallback = getDefaultScanCallback(), timeout: Runnable = scannerTimeout) {
+        try {
+            this.scanCallback = scanCallback
+            if (isScanning) return
+            isScanning = true
+            // Scanning settings
+            val settings =
+                ScanSettings.Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY) // Refresh the devices list every second
+                    .setReportDelay(0) // Hardware filtering has some issues on selected devices
+                    .setUseHardwareFilteringIfSupported(false) // Samsung S6 and S6 Edge report equal value of RSSI for all devices. In this app we ignore the RSSI.
 /*.setUseHardwareBatchingIfSupported(false)*/
-                .build()
-        // Let's use the filter to scan only for Mesh devices
-        val filters: MutableList<ScanFilter> =
-            ArrayList()
-        filters.add(
-            ScanFilter.Builder().setServiceUuid(
-                ParcelUuid(Constants.MESH_PROXY_UUID)
-            ).build()
-        )
-        val scanner = BluetoothLeScannerCompat.getScanner()
-        scanner.startScan(filters, settings, scanCallback)
-        Log.v(TAG, "Scan started")
-        handler.postDelayed(scannerTimeout, 20000)
+                    .build()
+            // Let's use the filter to scan only for Mesh devices
+            val filters: MutableList<ScanFilter> =
+                ArrayList()
+            filters.add(
+                ScanFilter.Builder().setServiceUuid(
+                    ParcelUuid(Constants.MESH_PROXY_UUID)
+                ).build()
+            )
+            val scanner = BluetoothLeScannerCompat.getScanner()
+            scanner.startScan(filters, settings, scanCallback)
+            Log.v(TAG, "Scan started")
+            handler.postDelayed(timeout, 20000)
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
     }
 
     /**
@@ -1008,15 +1023,23 @@ class NrfMeshRepository(
         isScanning = false
     }
 
+    private fun stopAutoScan() {
+        handler.removeCallbacks(scannerAutoTimeout)
+        val scanner = BluetoothLeScannerCompat.getScanner()
+        scanner.stopScan(scanAutoCallback)
+        isScanning = false
+    }
+
     private var scanCallback: ScanCallback = getDefaultScanCallback()
+    private var scanAutoCallback: ScanCallback = getDefaultScanCallback()
 
     private fun getDefaultScanCallback() =
         object : ScanCallback() {
             override fun onScanResult(
                 callbackType: Int,
                 result: ScanResult
-            ) { //In order to connectToProxy to the correct device, the hash advertised in the advertisement data should be matched.
-//This is to make sure we connectToProxy to the same device as device addresses could change after provisioning.
+            ) { // In order to connectToProxy to the correct device, the hash advertised in the advertisement data should be matched.
+                // This is to make sure we connectToProxy to the same device as device addresses could change after provisioning.
                 val scanRecord =
                     result.scanRecord
                 if (scanRecord != null) {
@@ -1045,20 +1068,20 @@ class NrfMeshRepository(
             override fun onScanResult(
                 callbackType: Int,
                 result: ScanResult
-            ) { //In order to connectToProxy to the correct device, the hash advertised in the advertisement data should be matched.
-//This is to make sure we connectToProxy to the same device as device addresses could change after provisioning.
+            ) { // In order to connectToProxy to the correct device, the hash advertised in the advertisement data should be matched.
+                // This is to make sure we connectToProxy to the same device as device addresses could change after provisioning.
                 val scanRecord =
                     result.scanRecord
                 if (scanRecord != null) {
                     val serviceData = Utils.getServiceData(result, Constants.MESH_PROXY_UUID)
                     if (meshManagerApi.isAdvertisingWithNetworkIdentity(serviceData)) {
                         if (meshManagerApi.networkIdMatches(networkId, serviceData)) {
-                            stopScan()
+                            stopAutoScan()
                             connect(context, ExtendedBluetoothDevice(result), true)
                         }
                     } else if (meshManagerApi.isAdvertisedWithNodeIdentity(serviceData)) {
                         if (checkIfNodeIdentityMatches(serviceData!!)) {
-                            stopScan()
+                            stopAutoScan()
                             connect(context, ExtendedBluetoothDevice(result), true)
                         }
                     }
@@ -1127,6 +1150,14 @@ class NrfMeshRepository(
         if (group != null) {
             selectedGroupLiveData.postValue(group)
         }
+    }
+
+    fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
+        if (!isProvisioning) {
+            isSending = true
+            Handler().postDelayed({ isSending = false }, 100)
+        }
+        meshManagerApi.createMeshPdu(unicastAddress, message)
     }
 
 }

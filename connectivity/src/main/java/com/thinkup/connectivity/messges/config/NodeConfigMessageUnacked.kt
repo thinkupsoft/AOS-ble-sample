@@ -21,6 +21,7 @@ class NodeConfigMessageUnacked(
         buffer.putInt(id or 0x00000000)
         buffer.put(timeoutconfig.toByte())
         buffer.putInt(timeoutValue or 0x00000000)
+        buffer.put(OpCodes.getTransactionId())
         mParameters = buffer.array()
     }
 }

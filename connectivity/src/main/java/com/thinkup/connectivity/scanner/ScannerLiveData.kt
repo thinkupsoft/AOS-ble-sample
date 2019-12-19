@@ -30,7 +30,7 @@ class ScannerLiveData(private var bluetoothEnabled: Boolean, private var locatio
         devices.clear() //Clear the devices on resuming the scan
         stopScanning = false
         startScanning = true
-        setValue(this)
+        postValue(this)
     }
 
     fun isScanRequested(): Boolean {
@@ -43,7 +43,7 @@ class ScannerLiveData(private var bluetoothEnabled: Boolean, private var locatio
     fun stopScanning() {
         stopScanning = true
         startScanning = false
-        setValue(this)
+        postValue(this)
     }
 
     internal fun isStopScanRequested(): Boolean {
@@ -52,12 +52,12 @@ class ScannerLiveData(private var bluetoothEnabled: Boolean, private var locatio
 
     internal fun scanningStarted() {
         scanningStarted = true
-        setValue(this)
+        postValue(this)
     }
 
     internal fun scanningStopped() {
         scanningStarted = false
-        setValue(this)
+        postValue(this)
     }
 
     internal fun bluetoothEnabled() {

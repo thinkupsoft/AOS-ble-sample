@@ -17,6 +17,7 @@ class NodeControlMessageUnacked(private val action: Int, appKey: ApplicationKey,
         super.assembleMessageParameters()
         val buffer = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN)
         buffer.put(action.toByte())
+        buffer.put(OpCodes.getTransactionId())
         mParameters = buffer.array()
     }
 }

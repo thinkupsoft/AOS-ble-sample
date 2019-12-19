@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.fragment.app.Fragment
 
 class CapabilitiesUtil {
 
@@ -21,6 +22,13 @@ class CapabilitiesUtil {
 
     fun requestBluetooth(activity: Activity?) {
         activity?.let {
+            val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            it.startActivityForResult(enableIntent, REQUEST_ENABLE_BLUETOOTH)
+        }
+    }
+
+    fun requestBluetooth(fragment: Fragment?) {
+        fragment?.let {
             val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             it.startActivityForResult(enableIntent, REQUEST_ENABLE_BLUETOOTH)
         }
@@ -43,7 +51,14 @@ class CapabilitiesUtil {
     fun requestLocation(activity: Activity?) {
         activity?.let {
             val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-            it.startActivity(intent)
+            it.startActivityForResult(intent, REQUEST_PERMISSION_LOCATION)
+        }
+    }
+
+    fun requestLocation(fragment: Fragment?) {
+        fragment?.let {
+            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+            it.startActivityForResult(intent, REQUEST_PERMISSION_LOCATION)
         }
     }
 }

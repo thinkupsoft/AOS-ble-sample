@@ -8,8 +8,10 @@ import java.nio.ByteOrder
 
 class NodeControlMessageStatus(accessMessage: AccessMessage, modelIdentifier: Int) : VendorModelMessageStatus(accessMessage, modelIdentifier) {
 
+    // 3 bytes
     var systemStat: Int = 0
     var ledStat: Int = 0
+    var batteryLevel: Int = 0
 
     override fun getOpCode(): Int {
         return OpCodes.NT_OPCODE_SYSTEM_STATUS
@@ -21,9 +23,11 @@ class NodeControlMessageStatus(accessMessage: AccessMessage, modelIdentifier: In
 
         systemStat = buffer.get(0).toInt()
         ledStat = buffer.get(1).toInt()
+        // TODO discomment
+        batteryLevel = buffer.get(2).toInt()
     }
 
     override fun toString(): String {
-        return "SYSTEM_STAT = ${systemStat}, LED_STAT = ${ledStat}"
+        return "SYSTEM_STAT = ${systemStat}, LED_STAT = ${ledStat}, BATTERY= ${batteryLevel}%"
     }
 }

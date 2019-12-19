@@ -35,6 +35,7 @@ class NodePeripheralMessageUnacked(
         buffer.put(filter.toByte())
         buffer.put(touch.toByte())
         buffer.put(sound.toByte())
+        buffer.put(OpCodes.getTransactionId())
         mParameters = buffer.array()
     }
 }

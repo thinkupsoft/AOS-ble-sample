@@ -19,6 +19,7 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
         parseStatusParameters()
     }
 
+    // 5 bytes
     var eventType: EventType? = null
     var value: Int = 0 // TIME_SPENT (ms) or TIME_SPENT (ms)
     var timestamp: Long = 0 // Mark to filter duplicated events

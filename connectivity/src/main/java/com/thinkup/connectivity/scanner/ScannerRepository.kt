@@ -63,7 +63,6 @@ class ScannerRepository(
 
         override fun onScanFailed(errorCode: Int) {
             try {
-                // TODO This should be handled
                 scannerLiveData.scanningStopped()
             } catch (ex: Exception) {
                 ex.printStackTrace()
