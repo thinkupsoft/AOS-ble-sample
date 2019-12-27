@@ -2,15 +2,17 @@ package com.thinkup.connectivity.messges.event
 
 import com.thinkup.connectivity.messges.EventType
 import com.thinkup.connectivity.messges.OpCodes
+import com.thinkup.connectivity.utils.ComparableEvent
 import no.nordicsemi.android.meshprovisioner.transport.AccessMessage
 import no.nordicsemi.android.meshprovisioner.transport.GenericStatusMessage
+import no.nordicsemi.android.meshprovisioner.utils.MeshAddress
 import no.nordicsemi.android.meshprovisioner.utils.MeshParserUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 import kotlin.math.abs
 
-class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(accessMessage) {
+class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(accessMessage), ComparableEvent.ComparableLiveData {
 
     private val REJECT_TIME_ELLAPSED = 1000
 
@@ -37,10 +39,18 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
         timestamp = Calendar.getInstance().timeInMillis
     }
 
+    override fun getKey(): Int {
+        return srcAddress
+    }
+
     override fun equals(other: Any?): Boolean {
         val comparable = other as NodeEventStatus
-        return if (comparable.eventType == eventType && comparable.value == value)
+        return if (comparable.eventType == eventType && comparable.value == value && comparable.srcAddress == srcAddress)
             return abs(timestamp - comparable.timestamp) <= REJECT_TIME_ELLAPSED
         else false
+    }
+
+    override fun toString(): String {
+        return "SRC=${MeshAddress.formatAddress(srcAddress, true)}, TYPE=${eventType}, VALUE=${value}, TIME=${timestamp}"
     }
 }

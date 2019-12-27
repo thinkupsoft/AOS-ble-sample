@@ -85,7 +85,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
                 status.postValue(Status.BINDING_APP_KEY)
                 if (meshNode.addedAppKeys.isNotEmpty()) {
                     val configModelAppUnbind = ConfigModelAppBind(element.elementAddress, model.modelId, meshNode.addedAppKeys[0].index)
-                    sendMessage(meshNode, configModelAppUnbind)
+                    sendMessage(meshNode, configModelAppUnbind, true)
                 }
             }
         }
@@ -106,7 +106,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
                     meshNode, ConfigModelPublicationSet(
                         element.elementAddress, "0001".toInt(16), 0, false,
                         0xFF, 0, 0, 1, 1, model.modelId
-                    )
+                    ), true
                 )
             }
         }
@@ -125,7 +125,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
                         NodeConfigMessageUnacked(
                             meshNode.nodeName.toInt(), NO_CONFIG,
                             0, appKey, model.modelId, vendorModel.companyIdentifier
-                        )
+                        ), repository.isSending
                     )
                 }
             }

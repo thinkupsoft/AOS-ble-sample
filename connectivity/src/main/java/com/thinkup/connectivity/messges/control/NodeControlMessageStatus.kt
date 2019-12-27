@@ -23,7 +23,6 @@ class NodeControlMessageStatus(accessMessage: AccessMessage, modelIdentifier: In
 
         systemStat = buffer.get(0).toInt()
         ledStat = buffer.get(1).toInt()
-        // TODO discomment
         batteryLevel = buffer.get(2).toInt()
     }
 

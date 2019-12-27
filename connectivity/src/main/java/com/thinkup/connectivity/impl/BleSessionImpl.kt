@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
+import android.util.Log
 import androidx.lifecycle.Observer
 import com.thinkup.connectivity.BleSession
 import com.thinkup.connectivity.BleSetting
@@ -27,6 +28,39 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
 
     private val handler = Handler()
     private val runnable = Runnable { keepAlive() }
+    /**
+     * Config a node when receive a HELLO event message
+     */
+    private val configObserver: Observer<NodeEventStatus> =
+        Observer { event ->
+            Log.d("TKUP-NEURAL:::", event.toString())
+            if (event.eventType == EventType.HELLO && !repository.isSending) {
+                getNode(event.srcAddress)?.let {
+                    it.isOnline = true
+                    val element: Element? = getElement(it)
+                    if (element != null) {
+                        val model = getModel<VendorModel>(element)
+                        if (model != null) {
+                            val appKey = getAppKey(model.boundAppKeyIndexes[0])
+                            appKey?.let { key ->
+                                sendMessage(
+                                    it,
+                                    NodeConfigMessageUnacked(it.nodeName.toInt(), NO_CONFIG, NO_CONFIG, key, model.modelId, model.companyIdentifier)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    private val connectionObserver: Observer<Boolean> = Observer {
+        if (it) {
+            // Listen for a HELLO event message
+            repository.getEventMessageLiveData().removeObserver(configObserver)
+            repository.getEventMessageLiveData().observeForever(configObserver)
+            keepAlive()
+        } else autoConnect()
+    }
 
     private val bluetoothStateBroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -49,22 +83,23 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
     }
 
     override fun start(): Unit = executeService {
-        // Listen for a HELLO event message
-        repository.getEventMessageLiveData().observeForever { configMessage(it) }
         // Check if connect and re-connect message are enable
-        if (setting.enabledStartConfig() && !checkConnectivity() && !repository.isSending) {
+        if (autoConnectCondition()) {
             // Register for bluetooth setting change and reconnect
             registerCallback()
             // Listen for connection changes
-            repository.isConnectedToProxy().observeForever { if (it) keepAlive() else autoConnect() }
+            repository.isConnectedToProxy().removeObserver(connectionObserver)
+            repository.isConnectedToProxy().observeForever(connectionObserver)
             autoConnect()
         } else {
             keepAlive()
         }
     }
 
+    private fun autoConnectCondition(): Boolean = setting.enabledStartConfig() && !checkConnectivity() && !repository.isSending
+
     private fun autoConnect() {
-        Handler().postDelayed({ autoConnect { start() } }, 1000)
+        if (autoConnectCondition()) Handler().postDelayed({ autoConnect { start() } }, 1000)
     }
 
     private fun registerCallback() {
@@ -74,29 +109,6 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
         )
     }
 
-    /**
-     * Config a node when receive a HELLO event message
-     */
-    private fun configMessage(event: NodeEventStatus) {
-        if (event.eventType == EventType.HELLO) {
-            getNode(event.srcAddress)?.let {
-                it.isOnline = true
-                val element: Element? = getElement(it)
-                if (element != null) {
-                    val model = getModel<VendorModel>(element)
-                    if (model != null) {
-                        val appKey = getAppKey(model.boundAppKeyIndexes[0])
-                        appKey?.let { key ->
-                            sendMessage(
-                                it,
-                                NodeConfigMessageUnacked(it.nodeName.toInt(), NO_CONFIG, NO_CONFIG, key, model.modelId, model.companyIdentifier)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     override fun keepAlive(): Unit = executeService {
         if (setting.enabledKeepAlive() && !repository.isSending) {
@@ -120,6 +132,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
                 repository.updateNodes(connected)
             }, KEEP_ALIVE_WAIT)
         }
+        handler.removeCallbacks(runnable)
         handler.postDelayed(runnable, KEEP_ALIVE)
     }
 
@@ -140,7 +153,6 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
                     handler.postDelayed({
-                        // TODO: KEEP_ALIVE instance of SET_LED_ON
                         sendMessage(node, NodeControlMessage(ControlParams.KEEP_ALIVE, appKey, model.modelId, model.companyIdentifier))
                     }, BULK_DELAY)
                 }

@@ -32,9 +32,9 @@ interface BleConnection {
     fun forceDelete(unicastAddress: Int)
 
     // nodes
-    fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage)
+    fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage, isProvisioning: Boolean = false)
 
     // groups
-    fun sendMessage(group: Group, message: MeshMessage)
+    fun sendMessage(group: Group, message: MeshMessage, isProvisioning: Boolean = false)
 
 }

@@ -101,9 +101,11 @@ class NrfMeshRepository(
     //Contains the MeshNetwork
     private val meshNetworkLiveData: MeshNetworkLiveData = MeshNetworkLiveData()
     private val networkImportState: SingleLiveEvent<String?> = SingleLiveEvent()
-    private val meshMessageLiveData: SingleLiveEvent<MeshMessage?> = SingleLiveEvent()
-    private val keepMessageLiveData: SingleLiveEvent<NodeControlMessageStatus?> = SingleLiveEvent()
-    private val eventMessageLiveData: ComparableSingleLiveData<NodeEventStatus> = ComparableSingleLiveData()
+    private val meshMessageLiveData: MutableLiveData<MeshMessage?> = SingleLiveEvent()
+    private val keepMessageLiveData: MutableLiveData<NodeControlMessageStatus?> = SingleLiveEvent()
+    private val eventMessageLiveData: MutableLiveData<NodeEventStatus> = MutableLiveData()
+    // Comparator to delete duplicated events
+    private val eventComparator: ComparableEvent<NodeEventStatus> = ComparableEvent()
     // Contains the provisioned nodes
     private val provisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
     private val groups = MutableLiveData<List<Group>>()
@@ -890,7 +892,7 @@ class NrfMeshRepository(
             val opCode = MeshParserUtils.unsignedByteToInt(accessMessage.accessPdu[0])
             if (opCode == OpCodes.NT_OPCODE_EVENT) {
                 status = NodeEventStatus(accessMessage)
-                if (eventMessageLiveData.hasActiveObservers()) {
+                if (eventComparator.compare(status) && eventMessageLiveData.hasActiveObservers()) {
                     eventMessageLiveData.postValue(status)
                 }
             } else {

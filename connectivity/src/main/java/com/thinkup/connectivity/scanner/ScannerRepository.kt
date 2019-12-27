@@ -153,45 +153,50 @@ class ScannerRepository(
      * @param filterUuid UUID to filter scan results with
      */
     fun startScan(filterUuid: UUID) {
-        this.filterUuid = filterUuid
+        try {
+            this.filterUuid = filterUuid
 
-        if (scannerLiveData.isScanRequested()) {
-            if (scannerLiveData.isScanning()) {
-                return
-            }
-        }
-
-        if (scannerLiveData.isStopScanRequested()) {
-            return
-        }
-
-        if (this.filterUuid == Constants.MESH_PROXY_UUID) {
-            val network = meshManagerApi.meshNetwork
-            if (network != null) {
-                if (network.netKeys.isNotEmpty()) {
-                    networkId = meshManagerApi.generateNetworkId(network.netKeys[0].key)
+            if (scannerLiveData.isScanRequested()) {
+                if (scannerLiveData.isScanning()) {
+                    return
                 }
             }
+
+            if (scannerLiveData.isStopScanRequested()) {
+                return
+            }
+
+            if (this.filterUuid == Constants.MESH_PROXY_UUID) {
+                val network = meshManagerApi.meshNetwork
+                if (network != null) {
+                    if (network.netKeys.isNotEmpty()) {
+                        networkId = meshManagerApi.generateNetworkId(network.netKeys[0].key)
+                    }
+                }
+            }
+
+            scannerLiveData.scanningStarted()
+            //Scanning settings
+            val settings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                // Refresh the devices list every second
+                .setReportDelay(0)
+                // Hardware filtering has some issues on selected devices
+                .setUseHardwareFilteringIfSupported(false)
+                // Samsung S6 and S6 Edge report equal value of RSSI for all devices. In this app we ignore the RSSI.
+                /*.setUseHardwareBatchingIfSupported(false)*/
+                .build()
+
+            // Let's use the filter to scan only for unprovisioned mesh nodes.
+            val filters: MutableList<ScanFilter> = mutableListOf()
+            filters.add(ScanFilter.Builder().setServiceUuid(ParcelUuid(filterUuid)).build())
+
+            val scanner = BluetoothLeScannerCompat.getScanner()
+            scanner.startScan(filters, settings, scanCallbacks)
+        } catch (ex: java.lang.Exception) {
+            BluetoothLeScannerCompat.getScanner().stopScan(scanCallbacks)
+            startScan(filterUuid)
         }
-
-        scannerLiveData.scanningStarted()
-        //Scanning settings
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            // Refresh the devices list every second
-            .setReportDelay(0)
-            // Hardware filtering has some issues on selected devices
-            .setUseHardwareFilteringIfSupported(false)
-            // Samsung S6 and S6 Edge report equal value of RSSI for all devices. In this app we ignore the RSSI.
-            /*.setUseHardwareBatchingIfSupported(false)*/
-            .build()
-
-        // Let's use the filter to scan only for unprovisioned mesh nodes.
-        val filters: MutableList<ScanFilter> = mutableListOf()
-        filters.add(ScanFilter.Builder().setServiceUuid(ParcelUuid(filterUuid)).build())
-
-        val scanner = BluetoothLeScannerCompat.getScanner()
-        scanner.startScan(filters, settings, scanCallbacks)
     }
 
     /**
