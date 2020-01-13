@@ -103,7 +103,8 @@ class NrfMeshRepository(
     private val networkImportState: SingleLiveEvent<String?> = SingleLiveEvent()
     private val meshMessageLiveData: MutableLiveData<MeshMessage?> = SingleLiveEvent()
     private val keepMessageLiveData: MutableLiveData<NodeControlMessageStatus?> = SingleLiveEvent()
-    private val eventMessageLiveData: MutableLiveData<NodeEventStatus> = MutableLiveData()
+    private val eventMessageLiveData: MutableLiveData<NodeEventStatus?> = MutableLiveData()
+    private val trainingMessageLiveData: ComparableSingleEvent<NodeEventStatus?> = ComparableSingleEvent()
     // Comparator to delete duplicated events
     private val eventComparator: ComparableEvent<NodeEventStatus> = ComparableEvent()
     // Contains the provisioned nodes
@@ -210,8 +211,23 @@ class NrfMeshRepository(
     /**
      * Returns the [EventMessageLiveData] live data object containing the mesh message
      */
-    fun getEventMessageLiveData(): LiveData<NodeEventStatus> {
+    fun getEventMessageLiveData(): LiveData<NodeEventStatus?> {
         return eventMessageLiveData
+    }
+
+    fun flushEventMessageLiveData() {
+        eventMessageLiveData.postValue(null)
+    }
+
+    /**
+     * Returns the [EventMessageLiveData] live data object containing the mesh message
+     */
+    fun getTrainingMessageLiveData(): LiveData<NodeEventStatus?> {
+        return trainingMessageLiveData
+    }
+
+    fun flushTrainingMessageLiveData() {
+        trainingMessageLiveData.postValue(null)
     }
 
     fun getSelectedGroup(): LiveData<Group>? {
@@ -742,61 +758,42 @@ class NrfMeshRepository(
             meshMessageLiveData.postValue(status)
         } else if (meshMessage is ConfigCompositionDataStatus) {
             val status = meshMessage
-            if (provisionedNode || isSending) {
-                isCompositionDataReceived = true
-                provisionedMeshNodeLiveData.postValue(node)
-                connectedProxyAddress.postValue(node.unicastAddress)
-                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.COMPOSITION_DATA_STATUS_RECEIVED)
-                handler.postDelayed({
-                    val configDefaultTtlGet = ConfigDefaultTtlGet()
-                    sendMessage(node.unicastAddress, configDefaultTtlGet, true)
-                }, 500)
-            } else {
-                updateNode(node)
-            }
+            isCompositionDataReceived = true
+            provisionedMeshNodeLiveData.postValue(node)
+            connectedProxyAddress.postValue(node.unicastAddress)
+            provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.COMPOSITION_DATA_STATUS_RECEIVED)
+            handler.postDelayed({
+                val configDefaultTtlGet = ConfigDefaultTtlGet()
+                sendMessage(node.unicastAddress, configDefaultTtlGet, true)
+            }, 500)
         } else if (meshMessage is ConfigDefaultTtlStatus) {
-            if (provisionedNode || isSending) {
-                isDefaultTtlReceived = true
-                provisionedMeshNodeLiveData.postValue(node)
-                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.DEFAULT_TTL_STATUS_RECEIVED)
-                handler.postDelayed({
-                    val appKey: ApplicationKey? = meshNetworkLiveData.getSelectedAppKey()
-                    val index = node.addedNetKeys[0].index
-                    val networkKey = meshNetwork!!.netKeys[index]
-                    val configAppKeyAdd = ConfigAppKeyAdd(networkKey, appKey!!)
-                    sendMessage(node.unicastAddress, configAppKeyAdd, true)
-                }, 1500)
-            } else {
-                updateNode(node)
-                meshMessageLiveData.postValue(meshMessage)
-            }
+            isDefaultTtlReceived = true
+            provisionedMeshNodeLiveData.postValue(node)
+            provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.DEFAULT_TTL_STATUS_RECEIVED)
+            handler.postDelayed({
+                val appKey: ApplicationKey? = meshNetworkLiveData.getSelectedAppKey()
+                val index = node.addedNetKeys[0].index
+                val networkKey = meshNetwork!!.netKeys[index]
+                val configAppKeyAdd = ConfigAppKeyAdd(networkKey, appKey!!)
+                sendMessage(node.unicastAddress, configAppKeyAdd, true)
+            }, 1500)
         } else if (meshMessage is ConfigAppKeyStatus) {
             val status = meshMessage
-            if (provisionedNode || isSending) {
-                if (status.isSuccessful) {
-                    isAppKeyAddCompleted = true
-                    provisionedMeshNodeLiveData.postValue(node)
-                    provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.APP_KEY_STATUS_RECEIVED)
-                    handler.postDelayed({
-                        val networkTransmitSet =
-                            ConfigNetworkTransmitSet(2, 1)
-                        sendMessage(node.unicastAddress, networkTransmitSet, true)
-                    }, 1500)
-                }
-            } else {
-                updateNode(node)
-                meshMessageLiveData.postValue(status)
+            if (status.isSuccessful) {
+                isAppKeyAddCompleted = true
+                provisionedMeshNodeLiveData.postValue(node)
+                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.APP_KEY_STATUS_RECEIVED)
+                handler.postDelayed({
+                    val networkTransmitSet =
+                        ConfigNetworkTransmitSet(2, 1)
+                    sendMessage(node.unicastAddress, networkTransmitSet, true)
+                }, 1500)
             }
         } else if (meshMessage is ConfigNetworkTransmitStatus) {
-            if (provisionedNode || isSending) {
-                provisionedNode = false
-                isNetworkRetransmitSetCompleted = true
-                provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.NETWORK_TRANSMIT_STATUS_RECEIVED)
-                if (isSending) bindNodeKeyComplete(node)
-            } else {
-                updateNode(node)
-                meshMessageLiveData.postValue(meshMessage)
-            }
+            provisionedNode = false
+            isNetworkRetransmitSetCompleted = true
+            provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.NETWORK_TRANSMIT_STATUS_RECEIVED)
+            if (isSending) bindNodeKeyComplete(node)
         } else if (meshMessage is ConfigModelAppStatus) {
             if (updateNode(node)) {
                 val status = meshMessage
@@ -892,7 +889,8 @@ class NrfMeshRepository(
             val opCode = MeshParserUtils.unsignedByteToInt(accessMessage.accessPdu[0])
             if (opCode == OpCodes.NT_OPCODE_EVENT) {
                 status = NodeEventStatus(accessMessage)
-                if (eventComparator.compare(status) && eventMessageLiveData.hasActiveObservers()) {
+                trainingMessageLiveData.postValue(status)
+                if (!eventComparator.compare(status)) {
                     eventMessageLiveData.postValue(status)
                 }
             } else {

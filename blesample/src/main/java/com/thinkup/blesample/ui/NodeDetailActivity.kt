@@ -124,6 +124,7 @@ class NodeDetailActivity : BaseActivity() {
         timeout.minValue = 0
         timeout.maxValue = 10
         timeout.wrapSelectorWheel = true
+        nodeIdText.setText(node?.nodeName ?: "")
 
         // Peripheral
         val shapesArray = Utils.getAttrs(ShapeParams.javaClass).filter { it != "INSTANCE" }
@@ -139,8 +140,10 @@ class NodeDetailActivity : BaseActivity() {
 
     private fun startEvent() {
         bleNode.getEvents().observe(this, Observer {
-            list.add(it)
-            adapter.setItems(list)
+            it?.let {
+                list.add(it)
+                adapter.setItems(list)
+            }
         })
     }
 
@@ -149,12 +152,12 @@ class NodeDetailActivity : BaseActivity() {
     }
 
     private fun startControl() {
-        controlStart.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.START) }
-        controlStop.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.STOP) }
-        controlPause.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.PAUSE) }
-        controlLedOn.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_ON) }
-        controlLedOff.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_OFF) }
-        controlRecalibrar.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.RECALIBRAR) }
+        controlStart.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.START, ackMessage.isChecked) }
+        controlStop.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.STOP, ackMessage.isChecked) }
+        controlPause.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.PAUSE, ackMessage.isChecked) }
+        controlLedOn.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_ON, ackMessage.isChecked) }
+        controlLedOff.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_OFF, ackMessage.isChecked) }
+        controlRecalibrar.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.RECALIBRAR, ackMessage.isChecked) }
     }
 
     private fun startPeripheral() {
@@ -183,7 +186,7 @@ class NodeDetailActivity : BaseActivity() {
             }
             bleNode.setPeripheralMessage(
                 node!!, selShape, selColor, dimmer.selectedItem.toString().toInt(), selLed, fill,
-                gesture, distance, filter, NO_CONFIG, selSound
+                gesture, distance, filter, NO_CONFIG, selSound, ackMessage.isChecked
             )
         }
     }
@@ -194,7 +197,8 @@ class NodeDetailActivity : BaseActivity() {
                 node!!,
                 id = if (nodeIdText.text.toString().isNullOrEmpty()) NO_CONFIG else nodeIdText.text.toString().toInt(),
                 timeoutConfig = if (timeout.value == 0) NO_CONFIG else ConfigParams.TIMEOUT_CONFIG,
-                timeout = timeout.value * 1000 // to milliseconds
+                timeout = timeout.value * 1000, // to milliseconds
+                ack = ackMessage.isChecked
             )
         }
     }

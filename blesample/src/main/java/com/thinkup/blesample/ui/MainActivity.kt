@@ -1,11 +1,7 @@
 package com.thinkup.blesample.ui
 
-import android.app.AlertDialog
-import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.CheckBox
 import android.widget.TextView
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -36,35 +32,14 @@ class MainActivity : BaseActivity(), DeviceRenderer.Callback, NodeRenderer.Callb
         groupsButton.setOnClickListener {
             startActivityForResult(Intent(this, GroupsActivity::class.java), GROUPS_REQUEST)
         }
+        trainingButton.setOnClickListener {
+            startActivityForResult(Intent(this, TrainingActivity::class.java), TRAINING_REQUEST)
+        }
         provisionedNodes.layoutManager = LinearLayoutManager(this)
         provisionedNodes.adapter = adapter
         provisionedNodes.addItemDecoration(DividerHelper(this))
         adapter.addRenderer(NodeRenderer(this))
-        settings()
         updateList()
-    }
-
-    private fun settings() {
-        bleNode.settings()
-        settingsButton.setOnClickListener {
-            val checkboxLayout: View = layoutInflater.inflate(R.layout.item_settings, null)
-            (checkboxLayout.findViewById(R.id.startSetting) as CheckBox).isChecked = bleNode.settings().enabledStartConfig()
-            (checkboxLayout.findViewById(R.id.keepSetting) as CheckBox).isChecked = bleNode.settings().enabledKeepAlive()
-            (checkboxLayout.findViewById(R.id.configSetting) as CheckBox).isChecked = bleNode.settings().enabledProvisionConfig()
-            AlertDialog.Builder(this)
-                .setView(checkboxLayout)
-                .setTitle("Settings")
-                .setMessage("Choose your preferences")
-                .setPositiveButton("OK") { _, _ ->
-                    bleNode.settings().set(
-                        (checkboxLayout.findViewById(R.id.startSetting) as CheckBox).isChecked,
-                        (checkboxLayout.findViewById(R.id.keepSetting) as CheckBox).isChecked,
-                        (checkboxLayout.findViewById(R.id.configSetting) as CheckBox).isChecked
-                    )
-                }
-                .create().show()
-
-        }
     }
 
     private fun updateList() {

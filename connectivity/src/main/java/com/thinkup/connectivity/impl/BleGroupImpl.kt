@@ -44,11 +44,6 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
         return network?.removeGroup(group) == true
     }
 
-    override fun getGroupNodes(group: Group): List<ProvisionedMeshNode> {
-        val network = repository.getMeshNetworkLiveData().getMeshNetwork()
-        return network?.getNodes(group) ?: listOf()
-    }
-
     override fun getStatus(group: Group, model: VendorModel) {
         val appKey = getAppKey(model.boundAppKeyIndexes[0] ?: 0)
         appKey?.let {

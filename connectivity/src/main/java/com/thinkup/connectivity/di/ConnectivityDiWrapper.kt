@@ -17,6 +17,7 @@ object ConnectivityDiWrapper {
         factory<BleNode> { BleNodeImpl(get(), get(), get()) }
         factory<BleGroup> { BleGroupImpl(get(), get(), get()) }
         factory<BleSession> { BleSessionImpl(get(), get(), get()) }
+        factory<BleTraining> { BleTrainingImpl(get(), get(), get()) }
     }
 
     fun repositoriesModule() = module {

@@ -14,24 +14,24 @@
             android:id="@+id/topButtons"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent">
+            app:layout_constraintStart_toStartOf="parent">
 
         <Button
                 android:id="@+id/nodeStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_margin="8dp"
                 android:layout_marginEnd="40dp"
                 android:text="Get status"
-                android:layout_margin="8dp"
                 app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
                 android:id="@+id/statusResponse"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="RESPONSE: "/>
+                android:text="RESPONSE: " />
 
     </LinearLayout>
 
@@ -64,12 +64,22 @@
                 android:text="EVENTS" />
     </com.google.android.material.tabs.TabLayout>
 
+    <CheckBox
+            android:id="@+id/ackMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:padding="10dp"
+            android:text="Acknowledged message"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tabs" />
+
     <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:fillViewport="true"
             app:layout_constraintBottom_toTopOf="@+id/topButtons"
-            app:layout_constraintTop_toBottomOf="@+id/tabs">
+            app:layout_constraintTop_toBottomOf="@+id/ackMessage">
 
         <RelativeLayout
                 android:layout_width="match_parent"
@@ -91,7 +101,7 @@
                 <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/eventsList"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"/>
+                        android:layout_height="match_parent" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -402,8 +412,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Config"
-                        app:layout_constraintTop_toBottomOf="@+id/timeout"
-                        app:layout_constraintEnd_toEndOf="parent" />
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/timeout" />
 
                 <TextView
                         android:id="@+id/configResponseTitle"

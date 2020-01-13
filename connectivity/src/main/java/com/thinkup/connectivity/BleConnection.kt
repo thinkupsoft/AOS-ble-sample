@@ -21,9 +21,11 @@ interface BleConnection {
 
     fun getGroups(): LiveData<List<Group>>
 
+    fun getGroupNodes(group: Group): List<ProvisionedMeshNode>
+
     fun getMessages(): LiveData<MeshMessage?>
 
-    fun getEvents(): LiveData<NodeEventStatus>
+    fun getEvents(): LiveData<NodeEventStatus?>
 
     fun autoConnect(onConnect: (() -> Unit)? = null)
 

@@ -9,6 +9,17 @@
         app:layout_constraintTop_toTopOf="parent">
 
     <ImageView
+            android:id="@+id/settingsAction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:contentDescription="Connection status"
+            android:gravity="end"
+            android:paddingStart="5dp"
+            android:paddingEnd="10dp"
+            android:src="@drawable/ic_settings" />
+
+    <ImageView
             android:id="@+id/connectionStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -28,13 +28,14 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
 
     private val handler = Handler()
     private val runnable = Runnable { keepAlive() }
+    private var keepAliveProgressing = false
     /**
      * Config a node when receive a HELLO event message
      */
-    private val configObserver: Observer<NodeEventStatus> =
+    private val configObserver: Observer<NodeEventStatus?> =
         Observer { event ->
-            Log.d("TKUP-NEURAL:::", event.toString())
-            if (event.eventType == EventType.HELLO && !repository.isSending) {
+            if (event != null && event.eventType == EventType.HELLO && !repository.isSending) {
+                Log.d("TKUP-NEURAL::Received::", event.toString())
                 getNode(event.srcAddress)?.let {
                     it.isOnline = true
                     val element: Element? = getElement(it)
@@ -53,6 +54,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
                 }
             }
         }
+
     private val connectionObserver: Observer<Boolean> = Observer {
         if (it) {
             // Listen for a HELLO event message
@@ -111,12 +113,14 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
 
 
     override fun keepAlive(): Unit = executeService {
-        if (setting.enabledKeepAlive() && !repository.isSending) {
+        if (isEnabledKeepAlive()) {
+            keepAliveProgressing = true
             val connected = mutableListOf<ProvisionedMeshNode>()
             val nodes = getNodes()
             val observer = Observer<MeshMessage?> {
                 synchronized(connected) {
                     if (it is NodeControlMessageStatus) {
+                        Log.d("TKUP-NEURAL::Rec-KA::", it.toString())
                         checkNode(it)?.let { node ->
                             node.batteryLevel = it.batteryLevel
                             connected.add(node)
@@ -125,16 +129,28 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
                 }
             }
             repository.getKeepMessageLiveData().observeForever(observer)
-            bulkMessaging(nodes) { initialConfigMessage(it) }
+            bulkMessaging(nodes) {
+                Log.d("TKUP-NEURAL::Send-KA::", it.toString())
+                keepAliveMessage(it)
+            }
             Handler().postDelayed({
                 repository.getKeepMessageLiveData().removeObserver(observer)
                 repository.flushKeepMessageLiveData()
                 repository.updateNodes(connected)
+                keepAliveProgressing = false
+                scheduleKeepAlive()
             }, KEEP_ALIVE_WAIT)
         }
-        handler.removeCallbacks(runnable)
-        handler.postDelayed(runnable, KEEP_ALIVE)
     }
+
+    private fun scheduleKeepAlive() {
+        handler.removeCallbacks(runnable)
+        handler.postDelayed(runnable, if (isRetryKeepAlive()) KEEP_ALIVE_RETRY else KEEP_ALIVE)
+    }
+
+    private fun isEnabledKeepAlive() = setting.enabledKeepAlive() && !repository.isSending && !keepAliveProgressing
+
+    private fun isRetryKeepAlive() = setting.enabledKeepAlive() && repository.isSending
 
     override fun stop() {
         handler.removeCallbacks(runnable)
@@ -144,7 +160,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
         return getNode(message.srcAddress)
     }
 
-    private fun initialConfigMessage(node: ProvisionedMeshNode) {
+    private fun keepAliveMessage(node: ProvisionedMeshNode) {
         val handler = Handler()
         val element: Element? = getElement(node)
         if (element != null) {

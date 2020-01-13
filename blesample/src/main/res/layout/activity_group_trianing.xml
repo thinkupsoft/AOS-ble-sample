@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+    <include layout="@layout/toolbar" />
+
+    <TextView
+            android:id="@+id/touchesTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar"
+            android:text="Touches" />
+
+    <NumberPicker
+            android:id="@+id/touches"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="@id/touchesTitle"
+            app:layout_constraintTop_toBottomOf="@+id/touchesTitle" />
+
+    <TextView
+            android:id="@+id/timeoutTitle"
+            app:layout_constraintStart_toEndOf="@+id/touchesTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar"
+            android:text="Timeout" />
+
+    <NumberPicker
+            android:id="@+id/timeout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="@+id/timeoutTitle"
+            app:layout_constraintTop_toBottomOf="@+id/timeoutTitle" />
+
+    <TextView
+            android:id="@+id/delayTitle"
+            app:layout_constraintStart_toEndOf="@+id/timeoutTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar"
+            android:text="Delay" />
+
+    <NumberPicker
+            android:id="@+id/delay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="@id/delayTitle"
+            app:layout_constraintTop_toBottomOf="@+id/delayTitle" />
+
+    <CheckBox
+            android:id="@+id/countdown"
+            android:text="Countdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toEndOf="@+id/delay"
+            app:layout_constraintTop_toTopOf="@id/delay"/>
+
+    <CheckBox
+            android:id="@+id/ledmode"
+            android:text="Flash"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toEndOf="@+id/delay"
+            app:layout_constraintTop_toBottomOf="@id/countdown"/>
+
+    <CheckBox
+            android:id="@+id/sound"
+            android:text="Sound"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toEndOf="@+id/delay"
+            app:layout_constraintTop_toBottomOf="@id/ledmode"/>
+
+    <CheckBox
+            android:id="@+id/endlight"
+            android:text="End light"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toEndOf="@+id/delay"
+            app:layout_constraintTop_toBottomOf="@id/sound"/>
+
+    <Button
+            android:id="@+id/executeTraining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Execute"
+            app:layout_constraintStart_toStartOf="@id/touches"
+            app:layout_constraintTop_toBottomOf="@+id/touches"/>
+
+    <TextView
+            android:id="@+id/actualConfig"
+            app:layout_constraintStart_toStartOf="@+id/touches"
+            app:layout_constraintTop_toBottomOf="@+id/executeTraining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ACTUAL CONFIG ::"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/trainingList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintTop_toBottomOf="@+id/actualConfig"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

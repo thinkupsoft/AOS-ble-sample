@@ -1,6 +1,7 @@
 package com.thinkup.connectivity.common
 
 import android.content.Context
+import android.os.Handler
 import androidx.lifecycle.LiveData
 import com.thinkup.connectivity.BleConnection
 import com.thinkup.connectivity.BleSetting
@@ -16,9 +17,11 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     protected val ACTION_TIMEOUT = 3 * 1000L // 3 sec
     protected val STEP_TIMEOUT = 2 * 1000L // 2 sec
     protected val PROVISION_TIMEOUT = 60 * 1000L // 30 sec - Timeout to provision step
-    protected val KEEP_ALIVE = 40 * 1000L // 40  sec - Time to send keep alive message
+    protected val KEEP_ALIVE = 30 * 1000L // 40  sec - Time to send keep alive message
+    protected val KEEP_ALIVE_RETRY = 5 * 1000L // 5  sec - Time to send keep alive message when is sending another command
     protected val KEEP_ALIVE_WAIT = 3 * 1000L // 3  sec - Time to recollect keep alive responses
     protected val BULK_DELAY = 100L
+    protected val REPLICATE_DELAY = 250L
 
     override fun settings(): BleSetting = setting
 
@@ -38,6 +41,11 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
         return repository.getGroups()
     }
 
+    override fun getGroupNodes(group: Group): List<ProvisionedMeshNode> {
+        val network = repository.getMeshNetworkLiveData().getMeshNetwork()
+        return network?.getNodes(group) ?: listOf()
+    }
+
     override fun disconnect() {
         repository.disconnect()
     }
@@ -50,9 +58,15 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
 
     protected fun getAppKey(index: Int) = repository.getMeshNetworkLiveData().getMeshNetwork()?.getAppKey(index)
 
-    override fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage, isProvisioning: Boolean) = sendMessage(node.unicastAddress, message, isProvisioning)
+    override fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage, isProvisioning: Boolean) =
+        sendMessage(node.unicastAddress, message, isProvisioning)
 
     override fun sendMessage(group: Group, message: MeshMessage, isProvisioning: Boolean) = sendMessage(group.address, message, isProvisioning)
+
+    protected fun sendReplicateMessage(group: Group, message: MeshMessage, isProvisioning: Boolean) {
+        sendMessage(group.address, message, isProvisioning)
+        Handler().postDelayed({ sendMessage(group.address, message, isProvisioning) }, REPLICATE_DELAY)
+    }
 
     private fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
         try {
@@ -92,7 +106,7 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
         return CoroutineScope(context).async(context) { block.invoke() }
     }
 
-    protected fun <T> bulkMessaging(items: List<T>?, delay: Long = BULK_DELAY, action: (T) -> Unit) {
+    protected fun <T> bulkMessaging(items: List<T>?, delay: Long = BULK_DELAY, action: suspend (T) -> Unit) {
         executeService {
             items?.forEach {
                 action(it)

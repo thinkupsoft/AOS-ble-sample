@@ -44,10 +44,12 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
     }
 
     override fun equals(other: Any?): Boolean {
-        val comparable = other as NodeEventStatus
-        return if (comparable.eventType == eventType && comparable.value == value && comparable.srcAddress == srcAddress)
-            return abs(timestamp - comparable.timestamp) <= REJECT_TIME_ELLAPSED
-        else false
+        val comparable = other as NodeEventStatus?
+        comparable?.let {
+            return if (comparable.eventType == eventType && comparable.value == value && comparable.srcAddress == srcAddress)
+                return abs(timestamp - comparable.timestamp) <= REJECT_TIME_ELLAPSED
+            else false
+        } ?: run { return false }
     }
 
     override fun toString(): String {

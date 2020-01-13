@@ -114,8 +114,10 @@ class GroupDetailActivity : BaseActivity() {
 
     private fun startEvent() {
         bleGroup.getEvents().observe(this, Observer {
-            list.add(it)
-            adapter.setItems(list)
+            it?.let {
+                list.add(it)
+                adapter.setItems(list)
+            }
         })
     }
 

@@ -24,6 +24,7 @@
         <activity android:name=".ui.NodeDetailActivity" />
         <activity android:name=".ui.GroupsActivity" />
         <activity android:name=".ui.ScannerActivity" />
+        <activity android:name=".ui.TrainingActivity" />
         <activity android:name=".ui.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

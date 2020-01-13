@@ -8,7 +8,6 @@ import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 interface BleGroup: BleConnection {
     fun addGroup(name: String): Boolean
     fun removeGroup(group: Group): Boolean
-    fun getGroupNodes(group: Group): List<ProvisionedMeshNode>
     fun getStatus(group: Group, model: VendorModel)
     fun addGroupNode(group: Group, meshNode: ProvisionedMeshNode?)
     fun removeGroupNode(group: Group, meshNode: ProvisionedMeshNode)

@@ -13,6 +13,7 @@ import com.thinkup.connectivity.messges.NO_CONFIG
 import com.thinkup.connectivity.messges.PeripheralParams
 import com.thinkup.connectivity.messges.ShapeParams
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
+import com.thinkup.connectivity.messges.config.NodeConfigMessageUnacked
 import com.thinkup.connectivity.messges.control.NodeControlMessage
 import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageUnacked
@@ -76,14 +77,18 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         }
     }
 
-    override fun controlMessage(node: ProvisionedMeshNode, params: Int) {
+    override fun controlMessage(node: ProvisionedMeshNode, params: Int, ack: Boolean) {
         val element: Element? = getElement(node)
         if (element != null) {
             val model = getModel<VendorModel>(element)
             if (model != null) {
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
-                    sendMessage(node, NodeControlMessage(params, appKey, model.modelId, model.companyIdentifier))
+                    sendMessage(
+                        node,
+                        if (ack) NodeControlMessage(params, appKey, model.modelId, model.companyIdentifier)
+                        else NodeControlMessage(params, appKey, model.modelId, model.companyIdentifier)
+                    )
                 }
             }
         }
@@ -93,24 +98,8 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         node: ProvisionedMeshNode,
         id: Int,
         timeoutConfig: Int,
-        timeout: Int
-    ) {
-        val element: Element? = getElement(node)
-        if (element != null) {
-            val model = getModel<VendorModel>(element)
-            if (model != null) {
-                val appKey = getAppKey(model.boundAppKeyIndexes[0])
-                appKey?.let {
-                    sendMessage(node, NodeConfigMessage(id, timeoutConfig, timeout, appKey, model.modelId, model.companyIdentifier))
-                }
-            }
-        }
-    }
-
-    override fun setPeripheralMessage(
-        node: ProvisionedMeshNode,
-        shape: Int, color: Int, dimmer: Int, led: Int,
-        fill: Int, gesture: Int, distance: Int, filter: Int, touch: Int, sound: Int
+        timeout: Int,
+        ack: Boolean
     ) {
         val element: Element? = getElement(node)
         if (element != null) {
@@ -119,7 +108,35 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
                     sendMessage(
-                        node, NodePeripheralMessage(
+                        node,
+                        if (ack) NodeConfigMessage(id, timeoutConfig, timeout, appKey, model.modelId, model.companyIdentifier)
+                        else NodeConfigMessageUnacked(id, timeoutConfig, timeout, appKey, model.modelId, model.companyIdentifier)
+                    )
+                }
+            }
+        }
+    }
+
+    override fun setPeripheralMessage(
+        node: ProvisionedMeshNode,
+        shape: Int, color: Int, dimmer: Int, led: Int,
+        fill: Int, gesture: Int, distance: Int, filter: Int, touch: Int, sound: Int,
+        ack: Boolean
+    ) {
+        val element: Element? = getElement(node)
+        if (element != null) {
+            val model = getModel<VendorModel>(element)
+            if (model != null) {
+                val appKey = getAppKey(model.boundAppKeyIndexes[0])
+                appKey?.let {
+                    sendMessage(
+                        node,
+                        if (ack) NodePeripheralMessage(
+                            shape, color, dimmer = dimmer, led = led, fill = fill, gesture = gesture,
+                            distance = distance, filter = filter, touch = touch, sound = sound,
+                            appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                        )
+                        else NodePeripheralMessageUnacked(
                             shape, color, dimmer = dimmer, led = led, fill = fill, gesture = gesture,
                             distance = distance, filter = filter, touch = touch, sound = sound,
                             appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
@@ -154,7 +171,12 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         }
     }
 
-    private fun identifyMessage(node: ProvisionedMeshNode, appKey: ApplicationKey, modelId: Int, companyIdentifier: Int): NodePeripheralMessageUnacked {
+    private fun identifyMessage(
+        node: ProvisionedMeshNode,
+        appKey: ApplicationKey,
+        modelId: Int,
+        companyIdentifier: Int
+    ): NodePeripheralMessageUnacked {
         var shape = ShapeParams.NUMBER_0
         var color = ColorParams.COLOR_GREEN
         when {
