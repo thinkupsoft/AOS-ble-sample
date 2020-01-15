@@ -887,6 +887,7 @@ class NrfMeshRepository(
         if (node != null) {
             var status: GenericStatusMessage? = null
             val opCode = MeshParserUtils.unsignedByteToInt(accessMessage.accessPdu[0])
+            Log.d("TKUP-NEURAL::", "Received opCode=${opCode}")
             if (opCode == OpCodes.NT_OPCODE_EVENT) {
                 status = NodeEventStatus(accessMessage)
                 trainingMessageLiveData.postValue(status)
