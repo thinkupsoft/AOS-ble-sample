@@ -1,10 +1,8 @@
 package com.thinkup.blesample.ui
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.Toast
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.tabs.TabLayout
@@ -90,7 +88,8 @@ class NodeDetailActivity : BaseActivity() {
         startEvent()
         startControl()
         startConfig()
-        startPeripheral()
+        startPrePeripheral()
+        startStepPeripheral()
         messages()
     }
 
@@ -131,7 +130,7 @@ class NodeDetailActivity : BaseActivity() {
         shape.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, shapesArray)
         val colorsArray = Utils.getAttrs(ColorParams.javaClass).filter { it != "INSTANCE" }
         color.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, colorsArray)
-        val dimmerValues = (0x00..0x64).toList().map { it.toString() }
+        val dimmerValues = (0x05..0x64).toList().map { it.toString() }
         dimmer.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, dimmerValues)
         sound.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, arrayOf("NO_SOUND", "BIP_START", "BIP_HIT", "BIP_START_HIT"))
         led.adapter =
@@ -152,24 +151,17 @@ class NodeDetailActivity : BaseActivity() {
     }
 
     private fun startControl() {
-        controlStart.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.START, ackMessage.isChecked) }
-        controlStop.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.STOP, ackMessage.isChecked) }
-        controlPause.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.PAUSE, ackMessage.isChecked) }
-        controlLedOn.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_ON, ackMessage.isChecked) }
-        controlLedOff.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_OFF, ackMessage.isChecked) }
-        controlRecalibrar.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.RECALIBRAR, ackMessage.isChecked) }
+        controlStart.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.START, timeout.value * 1000, ackMessage.isChecked) }
+        controlStop.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.STOP, timeout.value * 1000, ackMessage.isChecked) }
+        controlPause.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.PAUSE, timeout.value * 1000, ackMessage.isChecked) }
+        controlLedOn.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_ON, timeout.value * 1000, ackMessage.isChecked) }
+        controlLedOff.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.SET_LED_OFF, timeout.value * 1000, ackMessage.isChecked) }
+        controlRecalibrar.setOnClickListener { bleNode.controlMessage(node!!, ControlParams.RECALIBRAR, timeout.value * 1000, ackMessage.isChecked) }
     }
 
-    private fun startPeripheral() {
-        periferalSet.setOnClickListener {
-            val selShape = Utils.getValue(ShapeParams.javaClass, shape.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
-            val selColor = Utils.getValue(ColorParams.javaClass, color.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
-            val selLed = Utils.getValue(PeripheralParams.javaClass, led.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+    private fun startPrePeripheral() {
+        periferalSetPre.setOnClickListener {
             val selSound = Utils.getValue(PeripheralParams.javaClass, sound.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
-            val fill: Int = when (fillGroup.checkedRadioButtonId) {
-                R.id.solid -> PeripheralParams.FILL
-                else -> PeripheralParams.STROKE
-            }
             val gesture: Int = when (gestureGroup.checkedRadioButtonId) {
                 R.id.hover -> PeripheralParams.HOVER
                 R.id.touch -> PeripheralParams.TOUCH
@@ -180,13 +172,19 @@ class NodeDetailActivity : BaseActivity() {
                 R.id.medium -> PeripheralParams.MIDDLE
                 else -> PeripheralParams.LOW
             }
-            val filter: Int = when (filterGroup.checkedRadioButtonId) {
-                R.id.sunny -> PeripheralParams.SUN
-                else -> PeripheralParams.INDOOR
-            }
-            bleNode.setPeripheralMessage(
-                node!!, selShape, selColor, dimmer.selectedItem.toString().toInt(), selLed, fill,
-                gesture, distance, filter, NO_CONFIG, selSound, ackMessage.isChecked
+            bleNode.setPrePeripheralMessage(
+                node!!, dimmer.selectedItem.toString().toInt(), gesture, distance, selSound, ackMessage.isChecked
+            )
+        }
+    }
+
+    private fun startStepPeripheral() {
+        periferalSetStep.setOnClickListener {
+            val selShape = Utils.getValue(ShapeParams.javaClass, shape.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val selColor = Utils.getValue(ColorParams.javaClass, color.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val selLed = Utils.getValue(PeripheralParams.javaClass, led.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            bleNode.setStepPeripheralMessage(
+                node!!, selShape, selColor, selLed, ackMessage.isChecked
             )
         }
     }
@@ -196,8 +194,6 @@ class NodeDetailActivity : BaseActivity() {
             bleNode.configMessage(
                 node!!,
                 id = if (nodeIdText.text.toString().isNullOrEmpty()) NO_CONFIG else nodeIdText.text.toString().toInt(),
-                timeoutConfig = if (timeout.value == 0) NO_CONFIG else ConfigParams.TIMEOUT_CONFIG,
-                timeout = timeout.value * 1000, // to milliseconds
                 ack = ackMessage.isChecked
             )
         }

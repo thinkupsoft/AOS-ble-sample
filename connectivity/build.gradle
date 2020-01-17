@@ -51,7 +51,7 @@ dependencies {
     // Android BLE Library
     implementation 'no.nordicsemi.android:ble:2.1.1'
     // nRF Mesh TKU fork
-    api 'com.github.thinkupsoft:Android-nRF-Mesh-Library:v2.1.25'
+    api 'com.github.thinkupsoft:Android-nRF-Mesh-Library:v2.1.18'
     //api project(path: ':meshprovisioner')
 
     testImplementation 'junit:junit:4.12'

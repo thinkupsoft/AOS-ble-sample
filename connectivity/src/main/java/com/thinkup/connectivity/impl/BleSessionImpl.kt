@@ -46,7 +46,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
                             appKey?.let { key ->
                                 sendMessage(
                                     it,
-                                    NodeConfigMessageUnacked(it.nodeName.toInt(), NO_CONFIG, NO_CONFIG, key, model.modelId, model.companyIdentifier)
+                                    NodeConfigMessageUnacked(it.nodeName.toInt(), key, model.modelId, model.companyIdentifier)
                                 )
                             }
                         }
@@ -169,7 +169,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
                     handler.postDelayed({
-                        sendMessage(node, NodeControlMessage(ControlParams.KEEP_ALIVE, appKey, model.modelId, model.companyIdentifier))
+                        sendMessage(node, NodeControlMessage(ControlParams.KEEP_ALIVE, 0, appKey, model.modelId, model.companyIdentifier))
                     }, BULK_DELAY)
                 }
             }

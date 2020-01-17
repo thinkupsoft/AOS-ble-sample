@@ -7,8 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class NodeConfigMessageUnacked(
-    val id: Int, val timeoutconfig: Int, val timeoutValue: Int,
-    appKey: ApplicationKey, modelId: Int, compId: Int, params: ByteArray = byteArrayOf()
+    val id: Int, appKey: ApplicationKey, modelId: Int, compId: Int, params: ByteArray = byteArrayOf()
 ) : VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SET_CONFIG_UNACKNOWLEDGED, params) {
 
     init {
@@ -17,10 +16,8 @@ class NodeConfigMessageUnacked(
 
     override fun assembleMessageParameters() {
         super.assembleMessageParameters()
-        val buffer = ByteBuffer.allocate(10).order(ByteOrder.LITTLE_ENDIAN)
+        val buffer = ByteBuffer.allocate(5).order(ByteOrder.LITTLE_ENDIAN)
         buffer.putInt(id or 0x00000000)
-        buffer.put(timeoutconfig.toByte())
-        buffer.putInt(timeoutValue or 0x00000000)
         buffer.put(OpCodes.getTransactionId())
         mParameters = buffer.array()
     }

@@ -14,6 +14,29 @@ import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_group_detail.*
+import kotlinx.android.synthetic.main.activity_group_detail.color
+import kotlinx.android.synthetic.main.activity_group_detail.config
+import kotlinx.android.synthetic.main.activity_group_detail.configSet
+import kotlinx.android.synthetic.main.activity_group_detail.control
+import kotlinx.android.synthetic.main.activity_group_detail.controlLedOff
+import kotlinx.android.synthetic.main.activity_group_detail.controlLedOn
+import kotlinx.android.synthetic.main.activity_group_detail.controlPause
+import kotlinx.android.synthetic.main.activity_group_detail.controlRecalibrar
+import kotlinx.android.synthetic.main.activity_group_detail.controlStart
+import kotlinx.android.synthetic.main.activity_group_detail.controlStop
+import kotlinx.android.synthetic.main.activity_group_detail.dimmer
+import kotlinx.android.synthetic.main.activity_group_detail.distanceGroup
+import kotlinx.android.synthetic.main.activity_group_detail.events
+import kotlinx.android.synthetic.main.activity_group_detail.eventsList
+import kotlinx.android.synthetic.main.activity_group_detail.gestureGroup
+import kotlinx.android.synthetic.main.activity_group_detail.led
+import kotlinx.android.synthetic.main.activity_group_detail.nodeIdText
+import kotlinx.android.synthetic.main.activity_group_detail.periferal
+import kotlinx.android.synthetic.main.activity_group_detail.periferalSetPre
+import kotlinx.android.synthetic.main.activity_group_detail.shape
+import kotlinx.android.synthetic.main.activity_group_detail.sound
+import kotlinx.android.synthetic.main.activity_group_detail.tabs
+import kotlinx.android.synthetic.main.activity_group_detail.timeout
 import kotlinx.android.synthetic.main.toolbar.*
 import no.nordicsemi.android.meshprovisioner.Group
 import org.koin.android.ext.android.inject
@@ -84,7 +107,8 @@ class GroupDetailActivity : BaseActivity() {
         startEvent()
         startControl()
         startConfig()
-        startPeripheral()
+        startPrePeripheral()
+        startStepPeripheral()
     }
 
 
@@ -122,24 +146,17 @@ class GroupDetailActivity : BaseActivity() {
     }
 
     private fun startControl() {
-        controlStart.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.START) }
-        controlStop.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.STOP) }
-        controlPause.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.PAUSE) }
-        controlLedOn.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.SET_LED_ON) }
-        controlLedOff.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.SET_LED_OFF) }
-        controlRecalibrar.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.RECALIBRAR) }
+        controlStart.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.START, timeout = timeout.value * 1000) }
+        controlStop.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.STOP, timeout = timeout.value * 1000) }
+        controlPause.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.PAUSE, timeout = timeout.value * 1000) }
+        controlLedOn.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.SET_LED_ON, timeout = timeout.value * 1000) }
+        controlLedOff.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.SET_LED_OFF, timeout = timeout.value * 1000) }
+        controlRecalibrar.setOnClickListener { bleGroup.controlMessage(group!!, ControlParams.RECALIBRAR, timeout = timeout.value * 1000) }
     }
 
-    private fun startPeripheral() {
-        periferalSet.setOnClickListener {
-            val selShape = Utils.getValue(ShapeParams.javaClass, shape.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
-            val selColor = Utils.getValue(ColorParams.javaClass, color.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
-            val selLed = Utils.getValue(PeripheralParams.javaClass, led.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+    private fun startPrePeripheral() {
+        periferalSetPre.setOnClickListener {
             val selSound = Utils.getValue(PeripheralParams.javaClass, sound.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
-            val fill: Int = when (fillGroup.checkedRadioButtonId) {
-                R.id.solid -> PeripheralParams.FILL
-                else -> PeripheralParams.STROKE
-            }
             val gesture: Int = when (gestureGroup.checkedRadioButtonId) {
                 R.id.hover -> PeripheralParams.HOVER
                 R.id.touch -> PeripheralParams.TOUCH
@@ -150,13 +167,19 @@ class GroupDetailActivity : BaseActivity() {
                 R.id.medium -> PeripheralParams.MIDDLE
                 else -> PeripheralParams.LOW
             }
-            val filter: Int = when (filterGroup.checkedRadioButtonId) {
-                R.id.sunny -> PeripheralParams.SUN
-                else -> PeripheralParams.INDOOR
-            }
-            bleGroup.setPeripheralMessage(
-                group!!, selShape, selColor, dimmer.selectedItem.toString().toInt(), selLed, fill,
-                gesture, distance, filter, NO_CONFIG, selSound
+            bleGroup.setPrePeripheralMessage(
+                group!!, dimmer.selectedItem.toString().toInt(), gesture, distance, selSound
+            )
+        }
+    }
+
+    private fun startStepPeripheral() {
+        periferalSetStep.setOnClickListener {
+            val selShape = Utils.getValue(ShapeParams.javaClass, shape.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val selColor = Utils.getValue(ColorParams.javaClass, color.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            val selLed = Utils.getValue(PeripheralParams.javaClass, led.selectedItem.toString())?.toString()?.toInt() ?: NO_CONFIG
+            bleGroup.setStepPeripheralMessage(
+                group!!, selShape, selColor, selLed
             )
         }
     }
@@ -165,9 +188,7 @@ class GroupDetailActivity : BaseActivity() {
         configSet.setOnClickListener {
             bleGroup.configMessage(
                 group!!,
-                id = if (nodeIdText.text.toString().isNullOrEmpty()) NO_CONFIG else nodeIdText.text.toString().toInt(),
-                timeoutConfig = if (timeout.value == 0) NO_CONFIG else ConfigParams.TIMEOUT_CONFIG,
-                timeout = timeout.value * 1000 // to milliseconds
+                id = if (nodeIdText.text.toString().isNullOrEmpty()) NO_CONFIG else nodeIdText.text.toString().toInt()
             )
         }
     }

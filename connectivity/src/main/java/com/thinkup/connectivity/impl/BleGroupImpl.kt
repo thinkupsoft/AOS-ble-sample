@@ -10,10 +10,11 @@ import com.thinkup.connectivity.messges.ColorParams
 import com.thinkup.connectivity.messges.NO_CONFIG
 import com.thinkup.connectivity.messges.PeripheralParams
 import com.thinkup.connectivity.messges.ShapeParams
-import com.thinkup.connectivity.messges.config.NodeConfigMessage
 import com.thinkup.connectivity.messges.config.NodeConfigMessageUnacked
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
-import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageUnacked
+import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessageUnacked
+import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessage
+import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
 import com.thinkup.connectivity.messges.status.NodeGetMessage
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.Group
@@ -107,22 +108,20 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
         }
     }
 
-    override fun controlMessage(group: Group, params: Int) {
+    override fun controlMessage(group: Group, params: Int, timeout: Int) {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         val models = network?.getModels(group)
         if (models?.isNotEmpty() == true) {
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                sendMessage(group, NodeControlMessageUnacked(params, appKey, model.modelId, model.companyIdentifier))
+                sendMessage(group, NodeControlMessageUnacked(params, timeout, appKey, model.modelId, model.companyIdentifier))
             }
         }
     }
 
-    override fun setPeripheralMessage(
-        group: Group,
-        shape: Int, color: Int, dimmer: Int, led: Int,
-        fill: Int, gesture: Int, distance: Int, filter: Int, touch: Int, sound: Int
+    override fun setPrePeripheralMessage(
+        group: Group, dimmer: Int, gesture: Int, distance: Int, sound: Int
     ) {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         val models = network?.getModels(group)
@@ -131,9 +130,8 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
                 sendMessage(
-                    group, NodePeripheralMessageUnacked(
-                        shape, color, dimmer = dimmer, led = led, fill = fill, gesture = gesture,
-                        distance = distance, filter = filter, touch = touch, sound = sound,
+                    group, NodePrePeripheralMessageUnacked(
+                        dimmer = dimmer, gesture = gesture, distance = distance, sound = sound,
                         appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
                     )
                 )
@@ -141,7 +139,26 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
         }
     }
 
-    private fun identifyMessage(group: Group, appKey: ApplicationKey, modelId: Int, companyIdentifier: Int): NodePeripheralMessageUnacked {
+    override fun setStepPeripheralMessage(
+        group: Group, shape: Int, color: Int, led: Int
+    ) {
+        val network = repository.getMeshNetworkLiveData().getMeshNetwork()
+        val models = network?.getModels(group)
+        if (models?.isNotEmpty() == true) {
+            val model = models[0] as VendorModel
+            val appKey = getAppKey(model.boundAppKeyIndexes[0])
+            appKey?.let {
+                sendMessage(
+                    group, NodeStepPeripheralMessageUnacked(
+                        shape = shape, color = color, led = led,
+                        appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                    )
+                )
+            }
+        }
+    }
+
+    private fun identifyMessage(group: Group, appKey: ApplicationKey, modelId: Int, companyIdentifier: Int): NodeStepPeripheralMessageUnacked {
         var shape = ShapeParams.LETTER_A
         var color = ColorParams.COLOR_GREEN
         when {
@@ -162,21 +179,18 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
                 color = ColorParams.COLOR_YELLOW
             }
         }
-        return NodePeripheralMessageUnacked(
-            shape, color, NO_CONFIG, NO_CONFIG, NO_CONFIG, NO_CONFIG, PeripheralParams.LED_PERMANENT,
-            NO_CONFIG, NO_CONFIG, NO_CONFIG, NO_CONFIG, NO_CONFIG, NO_CONFIG, appKey, modelId, companyIdentifier
+        return NodeStepPeripheralMessageUnacked(
+            shape, color, PeripheralParams.LED_PERMANENT, appKey, modelId, companyIdentifier
         )
     }
 
-    private fun peripheralMessage(group: Group, message: NodePeripheralMessageUnacked) {
+    private fun peripheralMessage(group: Group, message: NodeStepPeripheralMessageUnacked) {
         sendMessage(group, message)
     }
 
     override fun configMessage(
         group: Group,
-        id: Int,
-        timeoutConfig: Int,
-        timeout: Int
+        id: Int
     ) {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         val models = network?.getModels(group)
@@ -184,7 +198,7 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                sendMessage(group, NodeConfigMessageUnacked(id, timeoutConfig, timeout, appKey, model.modelId, model.companyIdentifier))
+                sendMessage(group, NodeConfigMessageUnacked(id, appKey, model.modelId, model.companyIdentifier))
             }
         }
     }

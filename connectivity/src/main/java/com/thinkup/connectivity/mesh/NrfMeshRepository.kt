@@ -48,15 +48,6 @@ class NrfMeshRepository(
         meshManagerApi.loadMeshNetwork()
         //Initialize the ble manager
         bleMeshManager.setGattCallbacks(this)
-        // TODO remove for real impl
-        changeBatteryLevel()
-    }
-
-    private fun changeBatteryLevel() {
-        Handler().postDelayed({
-            batteryAverage.postValue((0..100).shuffled().first())
-            changeBatteryLevel()
-        }, 5000)
     }
 
     // Provisioning callback
@@ -668,16 +659,21 @@ class NrfMeshRepository(
 
     fun updateNodes(connecteds: List<ProvisionedMeshNode>) {
         var hasReload = false
+        var averageSum = 0
+        var count = 0
         for (node in meshNetwork?.nodes ?: listOf()) {
             hasReload = true
             connecteds.find { it.nodeName == node.nodeName }?.let {
                 node.isOnline = true
                 node.batteryLevel = it.batteryLevel
+                averageSum += it.batteryLevel
+                count++
             } ?: run {
                 node.isOnline = false
             }
         }
         if (hasReload) loadNodes()
+        if (count > 0) batteryAverage.postValue(averageSum / count)
     }
 
     override fun onTransactionFailed(dst: Int, hasIncompleteTimerExpired: Boolean) {
@@ -901,7 +897,7 @@ class NrfMeshRepository(
                     OpCodes.NT_OPCODE_GENERAL_STATUS -> status = NodeGetMessageStatus(accessMessage, modelIdentifier)
                     OpCodes.NT_OPCODE_CONFIG_STATUS -> status = NodeConfigMessageStatus(accessMessage, modelIdentifier)
                     OpCodes.NT_OPCODE_SYSTEM_STATUS -> status = NodeControlMessageStatus(accessMessage, modelIdentifier)
-                    OpCodes.NT_OPCODE_PERIFERAL_STATUS -> status = NodePeripheralMessageStatus(accessMessage, modelIdentifier)
+                    OpCodes.NT_OPCODE_PERIPHERAL_STATUS -> status = NodePeripheralMessageStatus(accessMessage, modelIdentifier)
                 }
                 update(node, status)
                 if (meshMessageLiveData.hasActiveObservers()) {

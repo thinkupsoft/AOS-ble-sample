@@ -9,13 +9,13 @@ import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.common.FastOptions
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.*
-import com.thinkup.connectivity.messges.ConfigParams.TIMEOUT_CONFIG
 import com.thinkup.connectivity.messges.config.NodeConfigMessageUnacked
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.messges.event.NodeEventStatus
-import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessage
+import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
-import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageUnacked
+import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessageUnacked
+import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
 import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.Group
@@ -88,7 +88,7 @@ class BleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMesh
         bulkMessaging(groups) { group ->
             sendMessage(
                 group,
-                NodeControlMessageUnacked(ControlParams.SET_LED_ON, appkey, model.modelId, model.companyIdentifier),
+                NodeControlMessageUnacked(ControlParams.SET_LED_ON, NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
                 true
             )
             delay(1000)
@@ -96,10 +96,8 @@ class BleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMesh
         for (i in 1..3) {
             bulkMessaging(groups) { group ->
                 sendMessage(
-                    group, NodePeripheralMessageUnacked(
-                        ShapeParams.CIRCLE, getCountdownColor(i), 0, 0, 0,
-                        NO_CONFIG, NO_CONFIG, PeripheralParams.FILL, NO_CONFIG, NO_CONFIG,
-                        NO_CONFIG, NO_CONFIG, NO_CONFIG,
+                    group, NodeStepPeripheralMessageUnacked(
+                        ShapeParams.CIRCLE, getCountdownColor(i), PeripheralParams.LED_PERMANENT,
                         appkey, model.modelId, model.companyIdentifier
                     ), true
                 )
@@ -142,17 +140,8 @@ class BleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMesh
         bulkMessaging(groups) { group ->
             sendMessage(
                 group,
-                NodeConfigMessageUnacked(NO_CONFIG, TIMEOUT_CONFIG, options.timeout, appkey, model.modelId, model.companyIdentifier),
+                NodeConfigMessageUnacked(NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
                 true
-            )
-            delay(BULK_DELAY)
-            sendMessage(
-                group, NodePeripheralMessageUnacked(
-                    ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, 0, 0, 0,
-                    NO_CONFIG, options.flashMode, PeripheralParams.FILL, PeripheralParams.BOTH, PeripheralParams.MIDDLE,
-                    NO_CONFIG, NO_CONFIG, if (options.sound) PeripheralParams.BIP_START_HIT else PeripheralParams.NO_SOUND,
-                    appkey, model.modelId, model.companyIdentifier
-                ), true
             )
         }
     }
@@ -162,7 +151,7 @@ class BleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMesh
         bulkMessaging(groups) { group ->
             sendMessage(
                 group,
-                NodeControlMessageUnacked(ControlParams.SET_LED_OFF, appkey, model.modelId, model.companyIdentifier),
+                NodeControlMessageUnacked(ControlParams.SET_LED_OFF, options.timeout, appkey, model.modelId, model.companyIdentifier),
                 true
             )
         }
@@ -189,10 +178,8 @@ class BleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMesh
                     Log.d("TKUP-NEURAL::", "Setting peripheral options - Node = ${node.nodeName}")
                     sendMessage(
                         node,
-                        NodePeripheralMessage(
-                            shape, color, 0, 0, 0,
-                            NO_CONFIG, NO_CONFIG, NO_CONFIG, NO_CONFIG, NO_CONFIG,
-                            NO_CONFIG, NO_CONFIG, NO_CONFIG,
+                        NodeStepPeripheralMessageUnacked(
+                            shape, color, options.flashMode,
                             appkey, model.modelId, model.companyIdentifier
                         ), true
                     )
@@ -210,7 +197,7 @@ class BleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMesh
         bulkMessaging(groups) { group ->
             sendReplicateMessage(
                 group,
-                NodeControlMessageUnacked(ControlParams.STOP, appkey, model.modelId, model.companyIdentifier),
+                NodeControlMessageUnacked(ControlParams.STOP, options.timeout, appkey, model.modelId, model.companyIdentifier),
                 false
             )
         }
@@ -220,12 +207,12 @@ class BleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMesh
 
     private lateinit var currentNode: ProvisionedMeshNode
     private val messagesObserver: Observer<MeshMessage?> = Observer {
-        when  {
+        when {
             it is NodePeripheralMessageStatus && ::currentNode.isInitialized -> {
                 Log.d("TKUP-NEURAL::", "Starting peripheral")
                 sendMessage(
                     currentNode,
-                    NodeControlMessageUnacked(ControlParams.START, appkey, model.modelId, model.companyIdentifier),
+                    NodeControlMessageUnacked(ControlParams.START, options.timeout, appkey, model.modelId, model.companyIdentifier),
                     true
                 )
             }

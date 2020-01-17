@@ -123,8 +123,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
                     sendMessage(
                         meshNode,
                         NodeConfigMessageUnacked(
-                            meshNode.nodeName.toInt(), NO_CONFIG,
-                            0, appKey, model.modelId, vendorModel.companyIdentifier
+                            meshNode.nodeName.toInt(), appKey, model.modelId, vendorModel.companyIdentifier
                         ), repository.isSending
                     )
                 }
