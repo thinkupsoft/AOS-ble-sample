@@ -13,7 +13,7 @@ class NodeStepPeripheralMessageUnacked(
     compId: Int,
     params: ByteArray = byteArrayOf()
 ) :
-    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SET_PERIPHERAL_PRE_UNACKNOWLEDGED, params) {
+    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SET_PERIPHERAL_TRAIN_UNACKNOWLEDGED, params) {
     init {
         assembleMessageParameters()
     }

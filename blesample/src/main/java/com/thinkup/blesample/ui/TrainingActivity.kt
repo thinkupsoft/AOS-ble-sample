@@ -1,32 +1,34 @@
 package com.thinkup.blesample.ui
 
 import android.os.Bundle
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.thinkup.blesample.R
+import com.thinkup.blesample.Utils
 import com.thinkup.blesample.renderers.EventRenderer
-import com.thinkup.connectivity.BleTraining
+import com.thinkup.connectivity.BleFastTraining
 import com.thinkup.connectivity.common.FastOptions
-import com.thinkup.connectivity.messges.ColorParams
-import com.thinkup.connectivity.messges.PeripheralParams
-import com.thinkup.connectivity.messges.ShapeParams
+import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_group_trianing.*
+import kotlinx.android.synthetic.main.activity_group_trianing.dimmer
 import kotlinx.android.synthetic.main.activity_group_trianing.sound
 import kotlinx.android.synthetic.main.activity_group_trianing.timeout
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
 
-class TrainingActivity : BaseActivity(), BleTraining.TrainingCallback {
+class TrainingActivity : BaseActivity(), BleFastTraining.TrainingCallback {
 
-    private val bleTraining: BleTraining by inject()
+    private val bleFastTraining: BleFastTraining by inject()
     private val adapter = RendererAdapter()
     private val list = mutableListOf<NodeEventStatus>()
 
     private val timeoutValues = getRange(0.0, 5.0, 0.5)
     private val delayValues = getRange(0.1, 5.0, 0.1)
+    private val threeValues = arrayOf("Low", "Medium", "High")
     private val touchesValues = (1..20 step 1).map { it.toString() }.toTypedArray()
 
     override fun title(): String = "Training"
@@ -47,6 +49,16 @@ class TrainingActivity : BaseActivity(), BleTraining.TrainingCallback {
         touches.maxValue = touchesValues.size - 1
         touches.minValue = 0
         touches.wrapSelectorWheel = false
+        dimmer.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, threeValues)
+        distance.adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, threeValues)
+        val shapesArray = Utils.getAttrs(ShapeParams.javaClass).filter { it != "INSTANCE" }
+        val colorsArray = Utils.getAttrs(ColorParams.javaClass).filter { it != "INSTANCE" && it != "COLOR_CUSTOM" }
+        val groupsList = bleFastTraining.getGroups().value
+        shapes.setItems(shapesArray)
+        colors.setItems(colorsArray)
+        groupsList?.let {
+            groups.setItems(it)
+        }
 
         executeTraining.setOnClickListener { execute() }
         messages()
@@ -63,17 +75,21 @@ class TrainingActivity : BaseActivity(), BleTraining.TrainingCallback {
         val opTouches = touchesValues[touches.value].toInt()
         val opTimeout = timeoutValues[timeout.value].toDouble() * 1000
         val opDelay = delayValues[delay.value].toDouble() * 1000
+        val selectedShapes = Utils.getValues(ShapeParams.javaClass, shapes.getSelecteds() as List<String>).map { it as Int }
+        val selectedColors = Utils.getValues(ColorParams.javaClass, colors.getSelecteds() as List<String>).map { it as Int }
         val options = FastOptions(
             opTouches, opTimeout.toInt(), opDelay.toInt(),
-            listOf(ShapeParams.CIRCLE), listOf(ColorParams.COLOR_RED),
+            selectedShapes, selectedColors,
             countdown.isChecked, if (ledmode.isChecked) PeripheralParams.LED_FLASH else PeripheralParams.LED_PERMANENT,
+            distance.selectedItemPosition, dimmer.selectedItemPosition,
             sound.isChecked, endlight.isChecked
         )
         actualConfig.text = "ACTUAL CONFIG :: $options"
 
-        val groups = listOf<Group>(bleTraining.getGroups().value!![1])
-        bleTraining.set(
-            groups = groups,
+
+        val selectedGroups = groups.getSelecteds() as List<Group>
+        bleFastTraining.set(
+            groups = selectedGroups,
             options = options,
             callback = this
         )
@@ -92,14 +108,14 @@ class TrainingActivity : BaseActivity(), BleTraining.TrainingCallback {
     }
 
     override fun onSettingComplete() {
-        bleTraining.startTraining()
+        bleFastTraining.startTraining()
     }
 
     override fun onCountdown() {
     }
 
-    override fun onAction(group: Group?, node: ProvisionedMeshNode?, event: NodeEventStatus) {
-        list.add(event)
+    override fun onAction(group: Group?, node: ProvisionedMeshNode?, nodeEventStatus: NodeEventStatus, event: EventType?, time: Long) {
+        list.add(nodeEventStatus)
         adapter.setItems(list)
     }
 

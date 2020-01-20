@@ -10,6 +10,8 @@ data class FastOptions(
     val colors: List<Int> = listOf(),
     val startWithCountdown: Boolean = false,
     val flashMode: Int = PeripheralParams.LED_PERMANENT,
+    val distance: Int = 1, // 0- Bajo, 1- Medio, 2- Alto
+    val dimmer: Int = 1, // 0- Bajo, 1- Medio, 2- Alto
     val sound: Boolean = false,
     val endWithLight: Boolean = false
 )

@@ -14,6 +14,11 @@ import kotlin.math.abs
 
 class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(accessMessage), ComparableEvent.ComparableLiveData {
 
+    constructor(eventType: EventType, value: Int = 0): this(AccessMessage()) {
+        this.eventType = eventType
+        this.value = value
+    }
+
     private val REJECT_TIME_ELLAPSED = 1000
 
     init {
@@ -31,6 +36,7 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
     }
 
     override fun parseStatusParameters() {
+        if (mParameters == null) return
         val buffer = ByteBuffer.wrap(mParameters).order(ByteOrder.LITTLE_ENDIAN)
 
         val type = buffer.get(0)

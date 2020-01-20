@@ -1,6 +1,7 @@
 package com.thinkup.connectivity.impl
 
 import android.content.Context
+import android.util.Log
 import com.thinkup.connectivity.BleGroup
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.common.BaseBleImpl
@@ -16,6 +17,7 @@ import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessageUnack
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
 import com.thinkup.connectivity.messges.status.NodeGetMessage
+import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
@@ -91,6 +93,7 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
     override fun identify(groups: List<Group>) {
         bulkMessaging(groups) {
             identify(it)
+            delay(BULK_DELAY)
         }
     }
 
@@ -101,9 +104,7 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                executeService {
-                    peripheralMessage(group, identifyMessage(group, appKey, model.modelId, model.companyIdentifier))
-                }
+                peripheralMessage(group, identifyMessage(group, appKey, model.modelId, model.companyIdentifier))
             }
         }
     }
@@ -185,7 +186,8 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
     }
 
     private fun peripheralMessage(group: Group, message: NodeStepPeripheralMessageUnacked) {
-        sendMessage(group, message)
+        Log.d("TKUP-NEURAL::IDY::", message.toString())
+        autoOffLedMessage(group, message)
     }
 
     override fun configMessage(

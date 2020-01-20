@@ -13,7 +13,7 @@ class NodeStepPeripheralMessage(
     compId: Int,
     params: ByteArray = byteArrayOf()
 ) :
-    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SET_PERIPHERAL_PRE, params) {
+    VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SET_PERIPHERAL_TRAIN, params) {
     init {
         assembleMessageParameters()
     }

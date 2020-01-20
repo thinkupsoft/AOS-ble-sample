@@ -657,6 +657,23 @@ class NrfMeshRepository(
         provisionedNodes.postValue(nodes)
     }
 
+    /**
+     * We should only update the selected node, since sending messages to group address will notify with nodes that is not on the UI
+     */
+    private fun updateNode(node: ProvisionedMeshNode): Boolean {
+        for (item in meshNetwork?.nodes ?: listOf()) {
+            if (node.nodeName == item.nodeName) {
+                item.isOnline = true
+            }
+        }
+        if (provisionedMeshNode?.unicastAddress == node.unicastAddress) {
+            provisionedMeshNode = node
+            extendedMeshNode?.postValue(node)
+            return true
+        }
+        return false
+    }
+
     fun updateNodes(connecteds: List<ProvisionedMeshNode>) {
         var hasReload = false
         var averageSum = 0
@@ -963,18 +980,6 @@ class NrfMeshRepository(
                 extendedMeshNode!!.postValue(this.meshNetwork!!.getNode(node.uuid))
             }
         }
-    }
-
-    /**
-     * We should only update the selected node, since sending messages to group address will notify with nodes that is not on the UI
-     */
-    private fun updateNode(node: ProvisionedMeshNode): Boolean {
-        if (provisionedMeshNode?.unicastAddress == node.unicastAddress) {
-            provisionedMeshNode = node
-            extendedMeshNode?.postValue(node)
-            return true
-        }
-        return false
     }
 
     /**

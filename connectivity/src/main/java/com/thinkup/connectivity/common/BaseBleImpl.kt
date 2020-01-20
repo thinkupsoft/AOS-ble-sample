@@ -6,8 +6,13 @@ import androidx.lifecycle.LiveData
 import com.thinkup.connectivity.BleConnection
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.mesh.NrfMeshRepository
+import com.thinkup.connectivity.messges.ControlParams
+import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
+import com.thinkup.connectivity.utils.TimeoutLiveData
 import kotlinx.coroutines.*
+import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.Group
+import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.*
 import kotlin.coroutines.CoroutineContext
 
@@ -22,6 +27,7 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     protected val KEEP_ALIVE_WAIT = 3 * 1000L // 3  sec - Time to recollect keep alive responses
     protected val BULK_DELAY = 100L
     protected val REPLICATE_DELAY = 250L
+    protected val AUTO_OFF_LEDS = 2500L // Auto-off leds after the info has been shown
 
     override fun settings(): BleSetting = setting
 
@@ -123,6 +129,50 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
                 } catch (ex: Exception) {
                     ex.printStackTrace()
                 }
+            }
+        }
+    }
+
+    fun autoOffLedMessage(node: ProvisionedMeshNode, message: MeshMessage, timeout: Long = AUTO_OFF_LEDS) {
+        val element: Element? = getElement(node)
+        if (element != null) {
+            val model = getModel<VendorModel>(element)
+            if (model != null) {
+                val appKey = getAppKey(model.boundAppKeyIndexes[0])
+                appKey?.let {
+                    autoOffLedMessage(node.unicastAddress, message, appKey, model.modelId, model.companyIdentifier, timeout)
+                }
+            }
+        }
+    }
+
+    fun autoOffLedMessage(group: Group, message: MeshMessage, timeout: Long = AUTO_OFF_LEDS) {
+        val network = repository.getMeshNetworkLiveData().getMeshNetwork()
+        val models = network?.getModels(group)
+        if (models?.isNotEmpty() == true) {
+            val model = models[0] as VendorModel
+            val appKey = getAppKey(model.boundAppKeyIndexes[0])
+            appKey?.let {
+                autoOffLedMessage(group.address, message, appKey, model.modelId, model.companyIdentifier, timeout)
+            }
+        }
+    }
+
+    private fun autoOffLedMessage(
+        unicastAddress: Int,
+        message: MeshMessage,
+        appkey: ApplicationKey,
+        modelId: Int,
+        companyId: Int,
+        timeout: Long = AUTO_OFF_LEDS
+    ) {
+        executeService {
+            sendMessage(unicastAddress, message)
+            delay(REPLICATE_DELAY)
+            sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_ON, 0, appkey, modelId, companyId))
+            TimeoutLiveData<Any?>(timeout, null)
+            {
+                sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_OFF, 0, appkey, modelId, companyId))
             }
         }
     }

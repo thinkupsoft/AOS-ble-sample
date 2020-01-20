@@ -1,6 +1,7 @@
 package com.thinkup.connectivity.impl
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.thinkup.connectivity.BleNode
@@ -182,9 +183,7 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
             if (model != null) {
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
-                    executeService {
-                        peripheralMessage(node, identifyMessage(node, appKey, model.modelId, model.companyIdentifier))
-                    }
+                    peripheralMessage(node, identifyMessage(node, appKey, model.modelId, model.companyIdentifier))
                 }
             }
         }
@@ -216,6 +215,7 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
     }
 
     private fun peripheralMessage(node: ProvisionedMeshNode, message: NodeStepPeripheralMessageUnacked) {
-        sendMessage(node, message)
+        Log.d("TKUP-NEURAL::IDY::", message.toString())
+        autoOffLedMessage(node, message)
     }
 }
