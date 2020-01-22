@@ -1,3 +1,3 @@
 package com.thinkup.connectivity.common
 
-class StepOption(nodes: List<StepNodeConfig>, timeout: Int, delay: Long)
+class StepOption(val nodes: List<StepNodeConfig>, val timeout: Int, val delay: Long)

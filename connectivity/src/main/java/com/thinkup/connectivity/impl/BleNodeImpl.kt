@@ -168,10 +168,9 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
     }
 
     override fun identify(nodes: List<ProvisionedMeshNode>) {
-        executeService {
-            nodes.forEach {
+        nodes.forEach {
+            executeService {
                 identify(it)
-                delay(BULK_DELAY)
             }
         }
     }
@@ -194,7 +193,7 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         appKey: ApplicationKey,
         modelId: Int,
         companyIdentifier: Int
-    ): NodeStepPeripheralMessageUnacked {
+    ): NodeStepPeripheralMessage {
         var shape = ShapeParams.NUMBER_0
         var color = ColorParams.COLOR_GREEN
         when {
@@ -209,12 +208,12 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
             node.nodeName.endsWith(NUMBER_8) -> shape = ShapeParams.NUMBER_8
             node.nodeName.endsWith(NUMBER_9) -> shape = ShapeParams.NUMBER_9
         }
-        return NodeStepPeripheralMessageUnacked(
+        return NodeStepPeripheralMessage(
             shape, color, PeripheralParams.LED_PERMANENT, appKey, modelId, companyIdentifier
         )
     }
 
-    private fun peripheralMessage(node: ProvisionedMeshNode, message: NodeStepPeripheralMessageUnacked) {
+    private fun peripheralMessage(node: ProvisionedMeshNode, message: NodeStepPeripheralMessage) {
         Log.d("TKUP-NEURAL::IDY::", message.toString())
         autoOffLedMessage(node, message)
     }

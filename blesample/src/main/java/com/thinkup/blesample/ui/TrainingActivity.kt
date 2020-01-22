@@ -1,6 +1,7 @@
 package com.thinkup.blesample.ui
 
 import android.os.Bundle
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -9,6 +10,7 @@ import com.thinkup.blesample.Utils
 import com.thinkup.blesample.renderers.EventRenderer
 import com.thinkup.connectivity.BleFastTraining
 import com.thinkup.connectivity.common.FastOptions
+import com.thinkup.connectivity.common.TrainingCallback
 import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.easylist.RendererAdapter
@@ -20,7 +22,7 @@ import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
 
-class TrainingActivity : BaseActivity(), BleFastTraining.TrainingCallback {
+class TrainingActivity : BaseActivity(), TrainingCallback {
 
     private val bleFastTraining: BleFastTraining by inject()
     private val adapter = RendererAdapter()
@@ -60,7 +62,11 @@ class TrainingActivity : BaseActivity(), BleFastTraining.TrainingCallback {
             groups.setItems(it)
         }
 
-        executeTraining.setOnClickListener { execute() }
+        executeTraining.setOnClickListener {
+            execute()
+            stopTraining.visibility = View.VISIBLE
+        }
+        stopTraining.setOnClickListener { bleFastTraining.stopTraining() }
         messages()
     }
 

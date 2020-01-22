@@ -105,7 +105,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
                 sendMessage(
                     meshNode, ConfigModelPublicationSet(
                         element.elementAddress, "0001".toInt(16), 0, false,
-                        0xFF, 0, 0, 1, 1, model.modelId
+                        0xFF, 2, 0, 3, 1, model.modelId
                     ), true
                 )
             }

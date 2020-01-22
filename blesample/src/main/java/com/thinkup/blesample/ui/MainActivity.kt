@@ -35,6 +35,9 @@ class MainActivity : BaseActivity(), DeviceRenderer.Callback, NodeRenderer.Callb
         trainingButton.setOnClickListener {
             startActivityForResult(Intent(this, TrainingActivity::class.java), TRAINING_REQUEST)
         }
+        scheduledButton.setOnClickListener {
+            startActivityForResult(Intent(this, ScheduledActivity::class.java), SCHEDULED_REQUEST)
+        }
         provisionedNodes.layoutManager = LinearLayoutManager(this)
         provisionedNodes.adapter = adapter
         provisionedNodes.addItemDecoration(DividerHelper(this))

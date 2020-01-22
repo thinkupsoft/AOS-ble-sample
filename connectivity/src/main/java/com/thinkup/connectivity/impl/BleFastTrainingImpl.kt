@@ -5,8 +5,8 @@ import android.util.Log
 import androidx.lifecycle.Observer
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.BleFastTraining
-import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.common.FastOptions
+import com.thinkup.connectivity.common.TrainingCallback
 import com.thinkup.connectivity.common.TrainingGroup
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.*
@@ -14,20 +14,18 @@ import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.connectivity.messges.peripheral.*
 import kotlinx.coroutines.delay
-import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
-class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BaseBleImpl(context, setting, repository),
+class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BleBaseTraining(context, setting, repository),
     BleFastTraining {
 
-    private lateinit var callback: BleFastTraining.TrainingCallback
     private lateinit var options: FastOptions
-    private lateinit var groups: List<TrainingGroup>
 
-    private lateinit var appkey: ApplicationKey
-    private lateinit var model: VendorModel
+    override fun getDimmerValue(): Int = options.dimmer
+    override fun getDistanceValue(): Int = options.distance
+    override fun getSoundValue(): Boolean = options.sound
 
     private val eventObserver = Observer<NodeEventStatus?> {
         Log.d("TKUP-NEURAL::", "Unprocess event:: $it")
@@ -47,19 +45,10 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         if (ended == groups.size) finish()
     }
 
-    override fun set(groups: List<Group>?, options: FastOptions, callback: BleFastTraining.TrainingCallback) = executeService {
-        this.groups = groups?.map { TrainingGroup(it.address, it, getGroupNodes(it), 0, 0) }
-            ?: getGroups().value!!.map { TrainingGroup(it.address, it, getGroupNodes(it), 0, 0) }
+    override fun set(groups: List<Group>?, options: FastOptions, callback: TrainingCallback) = executeService {
         this.options = options
-        this.callback = callback
         repository.getTrainingMessageLiveData().removeObserver(eventObserver)
-        repository.isSending = true
-        callback.onSettingStart()
-        setNodes()
-        starterConfig()
-        delay(300)
-        repository.isSending = false
-        callback.onSettingComplete()
+        super.set(groups, callback, null)
     }
 
     override fun startTraining() = executeService {
@@ -72,84 +61,16 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         }
     }
 
-    private suspend fun countdown() {
-        bulkMessaging(groups) { group ->
-            sendMessage(
-                group.group,
-                NodeControlMessageUnacked(ControlParams.SET_LED_ON, NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
-                true
-            )
-        }
-        for (i in 1..3) {
-            bulkMessaging(groups) { group ->
-                sendMessage(
-                    group.group,
-                    NodeStepPeripheralMessageUnacked(
-                        ShapeParams.CIRCLE, getCountdownColor(i), PeripheralParams.LED_PERMANENT,
-                        appkey, model.modelId, model.companyIdentifier
-                    ), true
-                )
-            }
-            delay(1000)
-        }
-        start()
+    override fun stopTraining() {
+        finish()
     }
 
-    private fun getCountdownColor(index: Int): Int = when (index) {
-        3 -> ColorParams.COLOR_GREEN
-        2 -> ColorParams.COLOR_YELLOW
-        else -> ColorParams.COLOR_RED
-    }
-
-    private fun setNodes() {
-        bulkMessaging(groups) { group ->
-            if (!::appkey.isInitialized || !::model.isInitialized) {
-                val network = repository.getMeshNetworkLiveData().getMeshNetwork()
-                val models = network?.getModels(group.group)
-                if (models?.isNotEmpty() == true) {
-                    model = models[0] as VendorModel
-                    val appKey = getAppKey(model.boundAppKeyIndexes[0])
-                    appKey?.let { this.appkey = it }
-                }
-            }
-        }
-    }
-
-    /**
-     * Before start a fast training set the common an in-mutable options to the groups
-     * timeout (light time), sound, led
-     */
-    private fun starterConfig() {
-        Log.d("TKUP-NEURAL::", "StarConfig")
-        bulkMessaging(groups) { group ->
-            val dimmer = when (options.dimmer) {
-                0 -> 0X05
-                1 -> 0X32
-                else -> 0X64
-            }
-            val distance = when (options.distance) {
-                0 -> PeripheralParams.LOW
-                1 -> PeripheralParams.MIDDLE
-                else -> PeripheralParams.HIGH
-            }
-            sendMessage(
-                group.group,
-                NodePrePeripheralMessageUnacked(
-                    dimmer, PeripheralParams.BOTH, distance,
-                    if (options.sound) PeripheralParams.BIP_START_HIT else PeripheralParams.NO_SOUND,
-                    appkey, model.modelId, model.companyIdentifier
-                ),
-                true
-            )
-        }
-    }
-
-    private fun start() = executeService {
+    override fun start() = executeService {
         Log.d("TKUP-NEURAL::", "LedOff to Start")
         bulkMessaging(groups) { group ->
             sendMessage(
                 group.group,
-                NodeControlMessageUnacked(ControlParams.SET_LED_OFF, options.timeout, appkey, model.modelId, model.companyIdentifier),
+                NodeControlMessageUnacked(ControlParams.SET_LED_OFF, NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
                 true
             )
         }
@@ -202,20 +123,22 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         }
     }
 
-    private fun finish() {
+    override fun finish() {
         Log.d("TKUP-NEURAL::", "Finish")
         repository.getTrainingMessageLiveData().removeObserver(eventObserver)
-        bulkMessaging(groups) { group ->
-            group.stopFallback()
-            delay(REPLICATE_DELAY)
-            if (options.endWithLight) {
-                autoOffLedMessage(
-                    group.group,
-                    NodeStepPeripheralMessageUnacked(
-                        ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_PERMANENT,
-                        appkey, model.modelId, model.companyIdentifier
+        if (groupsnitialized()) {
+            bulkMessaging(groups) { group ->
+                group.stopFallback()
+                delay(REPLICATE_DELAY)
+                if (options.endWithLight) {
+                    autoOffLedMessage(
+                        group.group,
+                        NodeStepPeripheralMessageUnacked(
+                            ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_PERMANENT,
+                            appkey, model.modelId, model.companyIdentifier
+                        )
                     )
-                )
+                }
             }
         }
         repository.isSending = false

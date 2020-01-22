@@ -1,5 +1,6 @@
 package com.thinkup.connectivity.common
 
-import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
-
-class StepNodeConfig(node:ProvisionedMeshNode, shapes: List<Int>, color: Int, led: Int)
+class StepNodeConfig(val nodeIndex: Int, val shapes: List<Int>, val color: Int, val led: Int) {
+    var sended: Boolean = false
+    var stepIndex: Int = 0
+}

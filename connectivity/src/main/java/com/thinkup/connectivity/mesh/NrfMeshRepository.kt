@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.os.Handler
+import android.os.Looper
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -102,7 +103,7 @@ class NrfMeshRepository(
     private val provisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
     private val groups = MutableLiveData<List<Group>>()
     private val transactionStatus: MutableLiveData<TransactionStatus?> = SingleLiveEvent()
-    private var handler: Handler = Handler()
+    private var handler: Handler = Handler(Looper.getMainLooper())
     private var unprovisionedMeshNode: UnprovisionedMeshNode? = null
     private var provisionedMeshNode: ProvisionedMeshNode? = null
     private var isReconnectingFlag = false
@@ -666,6 +667,7 @@ class NrfMeshRepository(
                 item.isOnline = true
             }
         }
+        loadNodes()
         if (provisionedMeshNode?.unicastAddress == node.unicastAddress) {
             provisionedMeshNode = node
             extendedMeshNode?.postValue(node)
@@ -1157,7 +1159,7 @@ class NrfMeshRepository(
     fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
         if (!isProvisioning) {
             isSending = true
-            Handler().postDelayed({ isSending = false }, 100)
+            Handler(Looper.getMainLooper()).postDelayed({ isSending = false }, 100)
         }
         meshManagerApi.createMeshPdu(unicastAddress, message)
     }

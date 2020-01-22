@@ -18,6 +18,15 @@
             app:layout_constraintTop_toBottomOf="@+id/toolbar" />
 
     <Button
+            android:id="@+id/scheduledButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Scheduled"
+            app:layout_constraintBottom_toTopOf="@+id/trainingButton"
+            app:layout_constraintStart_toStartOf="parent"/>
+
+    <Button
             android:id="@+id/trainingButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
