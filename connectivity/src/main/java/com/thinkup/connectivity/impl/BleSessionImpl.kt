@@ -139,7 +139,8 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
     // Keppalive messages are sent to each node and wait for responses to mark node as online
     // finally the method is scheduled to repeat the routine
     override fun keepAlive(): Unit = executeService {
-        if (isEnabledKeepAlive()) {
+        //if (isEnabledKeepAlive()) {
+        if (false) {
             keepAliveProgressing = true
             val connected = mutableListOf<ProvisionedMeshNode>()
             val nodes = getNodes()

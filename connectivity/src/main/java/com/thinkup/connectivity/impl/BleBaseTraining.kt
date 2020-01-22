@@ -73,7 +73,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
     }
 
 
-    protected fun set(groups: List<Group>?, callback: TrainingCallback, action: (()-> Unit)? = null) = executeService {
+    protected fun set(groups: List<Group>?, callback: TrainingCallback, action: (() -> Unit)? = null) = executeService {
         this.groups = groups?.map { TrainingGroup(it.address, it, getGroupNodes(it), 0, 0) }
             ?: getGroups().value!!.map { TrainingGroup(it.address, it, getGroupNodes(it), 0, 0) }
         this.callback = callback
@@ -82,6 +82,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
         action?.invoke()
         getMessagesKeys()
         starterConfig()
+        // delay despues de pre config
         delay(200)
         repository.isSending = false
         callback.onSettingComplete()
@@ -98,6 +99,8 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
                     ), true
                 )
                 if (i == 1) {
+                    // despues de circulo verde de countdown
+                    delay(20)
                     sendMessage(
                         group.group,
                         NodeControlMessageUnacked(ControlParams.SET_LED_ON, NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
@@ -105,6 +108,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
                     )
                 }
             }
+            // entre cada circulo de countdown
             delay(1000)
         }
         start()

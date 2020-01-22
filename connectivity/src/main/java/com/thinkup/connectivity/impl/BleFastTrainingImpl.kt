@@ -77,7 +77,8 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         repository.flushTrainingMessageLiveData()
         repository.getTrainingMessageLiveData().observeForever(eventObserver)
         callback.onStartTraining()
-        delay(200)
+        // delay despues de countdown, antes de primer paso
+        delay(options.delay.toLong())
         step(groups)
     }
 
@@ -88,7 +89,6 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                 group.currentStep++
                 Log.d("TKUP-NEURAL::", " ${group.group} - Step ${group.currentStep}")
                 Log.d("TKUP-NEURAL::", "Delay ${options.delay}")
-                delay(options.delay.toLong())
                 val node = group.nodes.random()
                 val color = options.colors.random()
                 val shape = options.shapes.random()
@@ -101,6 +101,8 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                             appkey, model.modelId, model.companyIdentifier
                         ), true
                     )
+                    // delay entre train y start
+                    delay(options.delay.toLong())
                     sendMessage(
                         node,
                         NodeControlMessageUnacked(ControlParams.START, options.timeout, appkey, model.modelId, model.companyIdentifier)
@@ -129,6 +131,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         if (groupsnitialized()) {
             bulkMessaging(groups) { group ->
                 group.stopFallback()
+                // delay antes de end light
                 delay(REPLICATE_DELAY)
                 if (options.endWithLight) {
                     autoOffLedMessage(
