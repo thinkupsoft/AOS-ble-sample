@@ -6,4 +6,67 @@
         android:layout_height="match_parent"
         tools:context=".ui.ScheduledActivity">
 
+    <include layout="@layout/toolbar" />
+
+    <Button
+            android:id="@+id/executeTraining1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Execute training 1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar" />
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Grupos de minimo 2 nodos (1-2)\n3 pasos"
+            app:layout_constraintBottom_toBottomOf="@+id/executeTraining1"
+            app:layout_constraintStart_toEndOf="@id/executeTraining1" />
+    <Button
+            android:id="@+id/executeTraining2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Execute training 2"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/executeTraining1" />
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Grupos de minimo 3 nodos (1-2-3)\n3 pasos"
+            app:layout_constraintBottom_toBottomOf="@+id/executeTraining2"
+            app:layout_constraintStart_toEndOf="@id/executeTraining2" />
+    <Button
+            android:id="@+id/executeTraining3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Execute training 3"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/executeTraining2" />
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Grupos de minimo 1 nodo (1)\n10 pasos"
+            app:layout_constraintBottom_toBottomOf="@+id/executeTraining3"
+            app:layout_constraintStart_toEndOf="@id/executeTraining3" />
+    <Button
+            android:id="@+id/executeTraining4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Execute training 4"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/executeTraining3" />
+
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Grupos de minimo 4 nodos (1-3-4)\n4 pasos"
+            app:layout_constraintBottom_toBottomOf="@+id/executeTraining4"
+            app:layout_constraintStart_toEndOf="@id/executeTraining4" />
+
+    <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/trainingList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/executeTraining4" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -10,7 +10,6 @@ import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.mesh.NodeCallback
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.ColorParams
-import com.thinkup.connectivity.messges.NO_CONFIG
 import com.thinkup.connectivity.messges.PeripheralParams
 import com.thinkup.connectivity.messges.ShapeParams
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
@@ -22,7 +21,6 @@ import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
 import com.thinkup.connectivity.messges.status.NodeGetMessage
 import com.thinkup.connectivity.utils.TimeoutLiveData
-import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.ConfigNodeReset
@@ -193,7 +191,7 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         appKey: ApplicationKey,
         modelId: Int,
         companyIdentifier: Int
-    ): NodeStepPeripheralMessage {
+    ): NodeStepPeripheralMessageUnacked {
         var shape = ShapeParams.NUMBER_0
         var color = ColorParams.COLOR_GREEN
         when {
@@ -208,12 +206,12 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
             node.nodeName.endsWith(NUMBER_8) -> shape = ShapeParams.NUMBER_8
             node.nodeName.endsWith(NUMBER_9) -> shape = ShapeParams.NUMBER_9
         }
-        return NodeStepPeripheralMessage(
+        return NodeStepPeripheralMessageUnacked(
             shape, color, PeripheralParams.LED_PERMANENT, appKey, modelId, companyIdentifier
         )
     }
 
-    private fun peripheralMessage(node: ProvisionedMeshNode, message: NodeStepPeripheralMessage) {
+    private fun peripheralMessage(node: ProvisionedMeshNode, message: NodeStepPeripheralMessageUnacked) {
         Log.d("TKUP-NEURAL::IDY::", message.toString())
         autoOffLedMessage(node, message)
     }

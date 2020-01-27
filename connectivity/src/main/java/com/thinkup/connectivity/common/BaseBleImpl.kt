@@ -7,7 +7,6 @@ import com.thinkup.connectivity.BleConnection
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.ControlParams
-import com.thinkup.connectivity.messges.control.NodeControlMessage
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.utils.TimeoutLiveData
 import kotlinx.coroutines.*
@@ -169,10 +168,11 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     ) {
         executeService {
             sendMessage(unicastAddress, message)
-            sendMessage(0xffff, NodeControlMessage(ControlParams.SET_LED_ON, 0, appkey, modelId, companyId))
+            delay(REPLICATE_DELAY)
+            sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_ON, 0, appkey, modelId, companyId))
             TimeoutLiveData<Any?>(timeout, null)
             {
-                sendMessage(0xffff, NodeControlMessageUnacked(ControlParams.SET_LED_OFF, 0, appkey, modelId, companyId))
+                sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_OFF, 0, appkey, modelId, companyId))
             }
         }
     }

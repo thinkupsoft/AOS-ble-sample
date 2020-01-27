@@ -109,7 +109,8 @@ enum class EventType(val value: Int, val text: String) {
     HELLO(0x01, "HELLO"),
     HIT(0xa0, "HIT"),
     TIMEOUT(0xa1, "TIMEOUT"),
-    LOW_BAT(0xb0, "LOW_BATTERY");
+    LOW_BAT(0xb0, "LOW_BATTERY"),
+    FAKE(0x00,"FAKE");
 
     companion object {
         fun getType(value: Int): EventType {

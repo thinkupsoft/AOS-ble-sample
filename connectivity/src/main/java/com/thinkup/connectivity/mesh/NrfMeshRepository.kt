@@ -5,11 +5,11 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.os.Handler
-import android.os.Looper
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.thinkup.connectivity.messges.EventType
 import com.thinkup.connectivity.messges.OpCodes
 import com.thinkup.connectivity.messges.config.NodeConfigMessageStatus
 import com.thinkup.connectivity.messges.control.NodeControlMessageStatus
@@ -103,7 +103,7 @@ class NrfMeshRepository(
     private val provisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
     private val groups = MutableLiveData<List<Group>>()
     private val transactionStatus: MutableLiveData<TransactionStatus?> = SingleLiveEvent()
-    private var handler: Handler = Handler(Looper.getMainLooper())
+    private var handler: Handler = Handler()
     private var unprovisionedMeshNode: UnprovisionedMeshNode? = null
     private var provisionedMeshNode: ProvisionedMeshNode? = null
     private var isReconnectingFlag = false
@@ -208,7 +208,8 @@ class NrfMeshRepository(
     }
 
     fun flushEventMessageLiveData() {
-        eventMessageLiveData.postValue(null)
+        eventMessageLiveData.postValue(NodeEventStatus(EventType.FAKE))
+        eventComparator.flush()
     }
 
     /**
@@ -1159,7 +1160,7 @@ class NrfMeshRepository(
     fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
         if (!isProvisioning) {
             isSending = true
-            Handler(Looper.getMainLooper()).postDelayed({ isSending = false }, 100)
+            Handler().postDelayed({ isSending = false }, 100)
         }
         meshManagerApi.createMeshPdu(unicastAddress, message)
     }

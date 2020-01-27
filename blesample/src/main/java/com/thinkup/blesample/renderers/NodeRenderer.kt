@@ -9,7 +9,7 @@ import kotlinx.android.synthetic.main.item_scan_device.view.*
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import no.nordicsemi.android.meshprovisioner.utils.MeshAddress
 
-class NodeRenderer(private val callback: Callback) : ViewRenderer<ProvisionedMeshNode, View>(ProvisionedMeshNode::class) {
+class NodeRenderer (private val callback: Callback) : ViewRenderer<ProvisionedMeshNode, View>(ProvisionedMeshNode::class) {
     override fun bind(view: View, model: ProvisionedMeshNode, position: Int) {
         view.deviceName.text = "Node ${model.nodeName}"
         view.deviceAddress.text = MeshAddress.formatAddress(model.unicastAddress, true)

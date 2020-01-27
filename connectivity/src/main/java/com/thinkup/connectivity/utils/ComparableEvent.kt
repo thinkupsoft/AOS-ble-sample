@@ -2,7 +2,7 @@ package com.thinkup.connectivity.utils
 
 class ComparableEvent<T : ComparableEvent.ComparableLiveData> {
 
-    private val eventSet = HashMap<Int, T>()
+    private var eventSet = HashMap<Int, T>()
 
     fun compare(value: T): Boolean {
         val current = eventSet[value.getKey()]
@@ -17,6 +17,10 @@ class ComparableEvent<T : ComparableEvent.ComparableLiveData> {
             eventSet[value.getKey()] = value
             return false
         }
+    }
+
+    fun flush() {
+        eventSet = HashMap<Int, T>()
     }
 
     interface ComparableLiveData {

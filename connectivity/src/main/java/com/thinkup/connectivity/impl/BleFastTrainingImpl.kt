@@ -28,13 +28,13 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     override fun getSoundValue(): Boolean = options.sound
 
     private val eventObserver = Observer<NodeEventStatus?> {
-        Log.d("TKUP-NEURAL::", "Unprocess event:: $it")
+        Log.d("TKUP-NEURAL::EVE", "Unprocess event:: $it")
         var ended = 0
         if (it is NodeEventStatus && (it.eventType == EventType.HIT || it.eventType == EventType.TIMEOUT)) {
             groups.forEach { group ->
                 if (group.isFromThis(it.srcAddress) && group.currentStep > group.lastReceivedStep) {
                     group.stopFallback()
-                    Log.d("TKUP-NEURAL::", " ${group.group} - Event:: $it")
+                    Log.d("TKUP-NEURAL::EVE", " ${group.group} - Event:: $it")
                     group.lastReceivedStep++
                     callback.onAction(group.group, getNode(it.srcAddress), it, it.eventType, it.value.toLong())
                     step(listOf(group))

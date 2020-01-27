@@ -52,18 +52,19 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
                                     NodeConfigMessageUnacked(it.nodeName.toInt(), key, model.modelId, model.companyIdentifier)
                                 )
                                 Handler().postDelayed({
-                                sendMessage(
-                                    it,
-                                    NodePrePeripheralMessageUnacked(
-                                        0x05,
-                                        NO_CONFIG,
-                                        NO_CONFIG,
-                                        NO_CONFIG,
-                                        key,
-                                        model.modelId,
-                                        model.companyIdentifier
+                                    sendMessage(
+                                        it,
+                                        NodePrePeripheralMessageUnacked(
+                                            0x05,
+                                            NO_CONFIG,
+                                            NO_CONFIG,
+                                            NO_CONFIG,
+                                            key,
+                                            model.modelId,
+                                            model.companyIdentifier
+                                        )
                                     )
-                                )}, BULK_DELAY)
+                                }, BULK_DELAY)
                             }
                         }
                     }
@@ -110,23 +111,22 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
     }
 
     override fun start(): Unit = executeService {
+        // Register for bluetooth setting change and reconnect
+        registerCallback()
+        // Listen for connection changes
+        repository.isConnectedToProxy().observeForever(connectionObserver)
         // Check if connect and re-connect message are enable
         if (autoConnectCondition()) {
-            // Register for bluetooth setting change and reconnect
-            registerCallback()
-            // Listen for connection changes
-            repository.isConnectedToProxy().removeObserver(connectionObserver)
-            repository.isConnectedToProxy().observeForever(connectionObserver)
             autoConnect()
         } else {
             keepAlive()
         }
     }
 
-    private fun autoConnectCondition(): Boolean = setting.enabledStartConfig() && !checkConnectivity() && !repository.isSending
+    private fun autoConnectCondition(): Boolean = setting.enabledStartConfig() && !checkConnectivity()
 
     private fun autoConnect() {
-        if (autoConnectCondition()) Handler().postDelayed({ autoConnect { start() } }, 1000)
+        if (autoConnectCondition()) Handler().postDelayed({ autoConnect { keepAlive() } }, 1000)
     }
 
     private fun registerCallback() {
@@ -139,8 +139,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
     // Keppalive messages are sent to each node and wait for responses to mark node as online
     // finally the method is scheduled to repeat the routine
     override fun keepAlive(): Unit = executeService {
-        //if (isEnabledKeepAlive()) {
-        if (false) {
+        if (isEnabledKeepAlive()) {
             keepAliveProgressing = true
             val connected = mutableListOf<ProvisionedMeshNode>()
             val nodes = getNodes()

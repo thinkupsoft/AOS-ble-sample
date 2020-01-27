@@ -33,7 +33,7 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
     private val threeValues = arrayOf("Low", "Medium", "High")
     private val touchesValues = (1..20 step 1).map { it.toString() }.toTypedArray()
 
-    override fun title(): String = "Training"
+    override fun title(): String = "Fast Training"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +70,11 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
         messages()
     }
 
+    override fun onStop() {
+        super.onStop()
+        bleFastTraining.stopTraining()
+    }
+
     private fun messages() {
         adapter.addRenderer(EventRenderer())
         trainingList.adapter = adapter
@@ -95,7 +100,7 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
 
         val selectedGroups = groups.getSelecteds() as List<Group>
         bleFastTraining.set(
-            groups = selectedGroups,
+            groups = selectedGroups, 
             options = options,
             callback = this
         )
@@ -131,6 +136,7 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
     }
 
     override fun onStopTraining() {
+        Toast.makeText(this, "Stopped", Toast.LENGTH_SHORT).show()
     }
 
     override fun onCompleteTraining() {
