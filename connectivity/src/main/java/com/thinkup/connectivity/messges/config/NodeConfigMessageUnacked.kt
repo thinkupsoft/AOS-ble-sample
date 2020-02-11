@@ -7,10 +7,11 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class NodeConfigMessageUnacked(
-    val id: Int, appKey: ApplicationKey, modelId: Int, compId: Int, params: ByteArray = byteArrayOf()
-) : VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SET_CONFIG_UNACKNOWLEDGED, params) {
+    val id: Int, appKey: ApplicationKey, modelId: Int, compId: Int
+) : VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SET_CONFIG_UNACKNOWLEDGED) {
 
     init {
+        mParameters = byteArrayOf()
         assembleMessageParameters()
     }
 

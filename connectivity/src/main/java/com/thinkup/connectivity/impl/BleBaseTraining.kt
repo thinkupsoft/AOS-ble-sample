@@ -103,7 +103,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
                     delay(20)
                     sendMessage(
                         group.group,
-                        NodeControlMessageUnacked(ControlParams.SET_LED_ON, NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
+                        NodeControlMessageUnacked(ControlParams.SET_LED_ON.toByte(), NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
                         true
                     )
                 }

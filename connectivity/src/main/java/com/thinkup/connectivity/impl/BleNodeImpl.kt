@@ -86,8 +86,8 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
                 appKey?.let {
                     sendMessage(
                         node,
-                        if (ack) NodeControlMessage(params, timeout, appKey, model.modelId, model.companyIdentifier)
-                        else NodeControlMessage(params, timeout, appKey, model.modelId, model.companyIdentifier)
+                        if (ack) NodeControlMessage(params.toByte(), timeout, appKey, model.modelId, model.companyIdentifier)
+                        else NodeControlMessage(params.toByte(), timeout, appKey, model.modelId, model.companyIdentifier)
                     )
                 }
             }

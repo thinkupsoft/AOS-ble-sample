@@ -37,14 +37,21 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         val newGroup = network?.createGroup(network.selectedProvisioner, name)
         newGroup?.let {
-            return network.addGroup(it)
+            if (network.addGroup(it)) {
+                repository.getMeshManagerApi().updateDb()
+                return true
+            }
         }
         return false
     }
 
     override fun removeGroup(group: Group): Boolean {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
-        return network?.removeGroup(group) == true
+        if (network?.removeGroup(group) == true) {
+            repository.getMeshManagerApi().updateDb()
+            return true
+        }
+        return false
     }
 
     override fun getStatus(group: Group, model: VendorModel) {
@@ -116,7 +123,7 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                sendMessage(group, NodeControlMessageUnacked(params, timeout, appKey, model.modelId, model.companyIdentifier))
+                sendMessage(group, NodeControlMessageUnacked(params.toByte(), timeout, appKey, model.modelId, model.companyIdentifier))
             }
         }
     }

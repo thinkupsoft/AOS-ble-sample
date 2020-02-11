@@ -1,13 +1,28 @@
 package com.thinkup.connectivity.utils
 
-import androidx.lifecycle.MutableLiveData
+class ComparableSingleEvent<T> {
 
-class ComparableSingleEvent<T> : MutableLiveData<T>() {
+    private var currentValue: T? = null
+    private var callback: Callback<T>? = null
 
-    override fun postValue(value: T?) {
-        if (compare(value))
-            super.postValue(value)
+    fun setObserver(callback: Callback<T>) {
+        this.callback = callback
     }
 
-    private fun compare(newValue: T?): Boolean = newValue != null && newValue != value
+    fun removeObserver() {
+        this.callback = null
+    }
+
+    fun postValue(value: T?) {
+        if (compare(value)) {
+            currentValue = value
+            callback?.onPost(value)
+        }
+    }
+
+    private fun compare(newValue: T?): Boolean = newValue != null && newValue != currentValue
+
+    interface Callback<T> {
+        fun onPost(e: T?)
+    }
 }

@@ -76,7 +76,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         bulkMessaging(groups) { group ->
             sendMessage(
                 group.group,
-                NodeControlMessageUnacked(ControlParams.SET_LED_OFF, NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
+                NodeControlMessageUnacked(ControlParams.SET_LED_OFF.toByte(), NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
                 true
             )
         }
@@ -121,7 +121,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
             sendMessage(
                 node,
                 NodeControlMessageUnacked(
-                    ControlParams.START, snc.timeout, appkey, model.modelId, model.companyIdentifier
+                    ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier
                 )
             )
         }
@@ -156,7 +156,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 sendMessage(
                     node,
                     NodeControlMessageUnacked(
-                        ControlParams.START, snc.timeout, appkey, model.modelId, model.companyIdentifier
+                        ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier
                     )
                 )
             }
@@ -233,7 +233,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
             sendMessage(
                 it.group.group,
                 NodeControlMessageUnacked(
-                    ControlParams.START, 60000, appkey, model.modelId, model.companyIdentifier
+                    ControlParams.START.toByte(), 60000, appkey, model.modelId, model.companyIdentifier
                 )
             )
         }
@@ -244,7 +244,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
             sendMessage(
                 it.group.group,
                 NodeControlMessageUnacked(
-                    ControlParams.STOP, 0, appkey, model.modelId, model.companyIdentifier
+                    ControlParams.STOP.toByte(), 0, appkey, model.modelId, model.companyIdentifier
                 )
             )
         }

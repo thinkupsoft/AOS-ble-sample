@@ -1,2 +1,2 @@
-include ':blesample', ':connectivity'
+include ':blesample', ':connectivity', ':mesprovisioner', ':ble'
 rootProject.name='blesample'

@@ -39,6 +39,17 @@ public class VendorModelMessageAcked extends GenericMessage {
         assembleMessageParameters();
     }
 
+    public VendorModelMessageAcked(@NonNull final ApplicationKey appKey,
+                                   final int modelId,
+                                   final int companyIdentifier,
+                                   final int opCode) {
+        super(appKey);
+        this.mModelIdentifier = modelId;
+        this.mCompanyIdentifier = companyIdentifier;
+        this.mOpCode = opCode;
+        mParameters = new byte[]{};
+    }
+
     @Override
     public int getOpCode() {
         return mOpCode;

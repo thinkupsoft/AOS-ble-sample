@@ -215,7 +215,7 @@ class NrfMeshRepository(
     /**
      * Returns the [EventMessageLiveData] live data object containing the mesh message
      */
-    fun getTrainingMessageLiveData(): LiveData<NodeEventStatus?> {
+    fun getTrainingMessageLiveData(): ComparableSingleEvent<NodeEventStatus?> {
         return trainingMessageLiveData
     }
 

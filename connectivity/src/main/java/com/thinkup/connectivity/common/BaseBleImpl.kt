@@ -6,7 +6,9 @@ import androidx.lifecycle.LiveData
 import com.thinkup.connectivity.BleConnection
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.mesh.NrfMeshRepository
+import com.thinkup.connectivity.messges.BROADCAST
 import com.thinkup.connectivity.messges.ControlParams
+import com.thinkup.connectivity.messges.DYNAMIC_MASK
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.utils.TimeoutLiveData
 import kotlinx.coroutines.*
@@ -25,8 +27,8 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     protected val KEEP_ALIVE = 30 * 1000L // 40  sec - Time to send keep alive message
     protected val KEEP_ALIVE_RETRY = 5 * 1000L // 5  sec - Time to send keep alive message when is sending another command
     protected val KEEP_ALIVE_WAIT = 3 * 1000L // 3  sec - Time to recollect keep alive responses
-    protected val BULK_DELAY = 100L
-    protected val REPLICATE_DELAY = 250L
+    protected val BULK_DELAY = 20L
+    protected val REPLICATE_DELAY = 20L
     protected val AUTO_OFF_LEDS = 2500L // Auto-off leds after the info has been shown
 
     override fun settings(): BleSetting = setting
@@ -72,6 +74,10 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     protected fun sendReplicateMessage(group: Group, message: MeshMessage, isProvisioning: Boolean) {
         sendMessage(group.address, message, isProvisioning)
         Handler().postDelayed({ sendMessage(group.address, message, isProvisioning) }, REPLICATE_DELAY)
+    }
+
+    protected fun sendBroadcastMessage(message: MeshMessage, isProvisioning: Boolean = false) {
+        sendMessage(BROADCAST, message, isProvisioning)
     }
 
     private fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
@@ -169,10 +175,10 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
         executeService {
             sendMessage(unicastAddress, message)
             delay(REPLICATE_DELAY)
-            sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_ON, 0, appkey, modelId, companyId))
+            sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_ON.toByte(), 0, appkey, modelId, companyId))
             TimeoutLiveData<Any?>(timeout, null)
             {
-                sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_OFF, 0, appkey, modelId, companyId))
+                sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_OFF.toByte(), 0, appkey, modelId, companyId))
             }
         }
     }

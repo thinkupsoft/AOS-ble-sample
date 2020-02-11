@@ -28,4 +28,10 @@ object OpCodes {
         TRANSACTION_ID++
         return getter.toByte()
     }
+
+    fun getUnicastMask(index: Int): String {
+        var mask = BASIC_MASK
+        mask = mask.replaceRange(index, index+1, "1")
+        return mask
+    }
 }

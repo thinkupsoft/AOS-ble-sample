@@ -100,7 +100,7 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
 
         val selectedGroups = groups.getSelecteds() as List<Group>
         bleFastTraining.set(
-            groups = selectedGroups, 
+            groups = selectedGroups,
             options = options,
             callback = this
         )
@@ -115,7 +115,6 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
     }
 
     override fun onSettingStart() {
-
     }
 
     override fun onSettingComplete() {

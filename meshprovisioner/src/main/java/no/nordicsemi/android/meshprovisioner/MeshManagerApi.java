@@ -1152,4 +1152,8 @@ public class MeshManagerApi implements MeshMngrApi {
         node.setUnicastAddress(mMeshNetwork.getUnicastAddress());
         return true;
     }
+
+    public void updateDb() {
+        mMeshNetworkDb.updateGroups(mGroupsDao, mMeshNetwork.groups);
+    }
 }

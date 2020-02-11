@@ -1,19 +1,20 @@
 package com.thinkup.connectivity.messges
 
 const val NO_CONFIG = 0x00
+const val BROADCAST = 0xFFFF
+const val DYNAMIC_MASK = "111111111111"
+const val BASIC_MASK = "000000000000"
 
 object ControlParams {
-    const val START = 0xA0
-    const val PAUSE = 0xA1
-    const val STOP = 0xA2
-    const val RECALIBRAR = 0xB0
-    const val SET_LED_ON = 0xC0
-    const val SET_LED_OFF = 0xC1
-    const val KEEP_ALIVE = 0xD0
-}
-
-object ConfigParams {
-    const val TIMEOUT_CONFIG = 0x01
+    const val TURN_OFF = 0x01
+    const val START = 0x02
+    const val PAUSE = 0x03
+    const val STOP = 0x04
+    const val RECALIBRAR = 0x05
+    const val SET_LED_ON = 0x06
+    const val SET_LED_OFF = 0x07
+    const val KEEP_ALIVE = 0x08
+    const val ENTER_DFU = 0x09
 }
 
 object ShapeParams {
@@ -69,18 +70,18 @@ object PeripheralParams {
     const val BIP_HIT = 0x32
     const val BIP_START_HIT = 0x33
     // LED CONFIG
-    const val LED_PERMANENT = 0x50
-    const val LED_FLICKER = 0x42
-    const val LED_FLASH = 0x46
-    const val LED_FAST_FLASH = 0x52
+    const val LED_PERMANENT = 0x01
+    const val LED_FLICKER = 0x02
+    const val LED_FLASH = 0x03
+    const val LED_FAST_FLASH = 0x04
     // GESTURE
-    const val HOVER = 0x48
-    const val TOUCH = 0x54
-    const val BOTH = 0x42
+    const val HOVER = 0b00
+    const val TOUCH = 0b10
+    const val BOTH = 0b11
     // DISTANCE
-    const val HIGH = 0x4C
-    const val MIDDLE = 0x4D
-    const val LOW = 0x53
+    const val HIGH = 0b00
+    const val MIDDLE = 0b10
+    const val LOW = 0b11
     // FILTER
     const val SUN = 0x53
     const val INDOOR = 0x49
@@ -110,7 +111,7 @@ enum class EventType(val value: Int, val text: String) {
     HIT(0xa0, "HIT"),
     TIMEOUT(0xa1, "TIMEOUT"),
     LOW_BAT(0xb0, "LOW_BATTERY"),
-    FAKE(0x00,"FAKE");
+    FAKE(0x00, "FAKE");
 
     companion object {
         fun getType(value: Int): EventType {

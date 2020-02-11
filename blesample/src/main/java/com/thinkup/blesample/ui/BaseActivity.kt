@@ -1,6 +1,8 @@
 package com.thinkup.blesample.ui
 
 import android.app.AlertDialog
+import android.content.pm.ActivityInfo
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.CheckBox
@@ -8,9 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import com.thinkup.blesample.R
 import com.thinkup.connectivity.BleSession
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.toolbar.*
-import kotlinx.android.synthetic.main.toolbar.toolbar
 import org.koin.android.ext.android.inject
 
 abstract class BaseActivity : AppCompatActivity() {
@@ -82,5 +82,6 @@ abstract class BaseActivity : AppCompatActivity() {
 
         }
     }
+
     abstract fun title(): String
 }
