@@ -1,7 +1,6 @@
 package com.thinkup.connectivity.impl
 
 import android.content.Context
-import android.util.Log
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.common.TrainingCallback
@@ -18,7 +17,7 @@ import no.nordicsemi.android.meshprovisioner.models.VendorModel
 
 abstract class BleBaseTraining(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BaseBleImpl(context, setting, repository) {
 
-    protected lateinit var callback: TrainingCallback
+    protected var callback: TrainingCallback? = null
     protected lateinit var appkey: ApplicationKey
     protected lateinit var model: VendorModel
     protected lateinit var groups: List<TrainingGroup>
@@ -48,7 +47,6 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
      * timeout (light time), sound, led
      */
     private fun starterConfig() {
-        Log.d("TKUP-NEURAL::", "StarConfig")
         bulkMessaging(groups) { group ->
             val dimmer = when (getDimmerValue()) {
                 0 -> 0X05
@@ -64,7 +62,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
                 group.group,
                 NodePrePeripheralMessageUnacked(
                     dimmer, PeripheralParams.BOTH, distance,
-                    if (getSoundValue()) PeripheralParams.BIP_START_HIT else PeripheralParams.NO_SOUND,
+                    if (getSoundValue()) PeripheralParams.BIP_START else PeripheralParams.NO_SOUND,
                     appkey, model.modelId, model.companyIdentifier
                 ),
                 true

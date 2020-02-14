@@ -49,10 +49,8 @@ dependencies {
     // Brings the new BluetoothLeScanner API to older platforms
     implementation 'no.nordicsemi.android.support.v18:scanner:1.4.3'
     // Android BLE Library
-    //implementation 'no.nordicsemi.android:ble:2.1.1'
     implementation project(path: ':ble')
     // nRF Mesh TKU fork
-    //api 'com.github.thinkupsoft:Android-nRF-Mesh-Library:v2.2.21'
     api project(path: ':meshprovisioner')
 
     testImplementation 'junit:junit:4.12'

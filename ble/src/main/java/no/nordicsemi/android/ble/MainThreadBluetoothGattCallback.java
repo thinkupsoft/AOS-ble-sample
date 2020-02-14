@@ -132,7 +132,8 @@ abstract class MainThreadBluetoothGattCallback extends BluetoothGattCallback {
 	public final void onCharacteristicChanged(@NonNull final BluetoothGatt gatt,
 											  @NonNull final BluetoothGattCharacteristic characteristic) {
 		final byte[] data = characteristic.getValue();
-		runOnUiThread(() -> onCharacteristicChangedSafe(gatt, characteristic, data));
+		//runOnUiThread(() -> onCharacteristicChangedSafe(gatt, characteristic, data));
+		onCharacteristicChangedSafe(gatt, characteristic, data);
 	}
 
 	@Override

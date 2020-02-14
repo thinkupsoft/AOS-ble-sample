@@ -19,8 +19,6 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
         this.value = value
     }
 
-    private val REJECT_TIME_ELLAPSED = 1000
-
     init {
         mParameters = accessMessage.parameters
         parseStatusParameters()
@@ -29,6 +27,7 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
     // 5 bytes
     var eventType: EventType? = null
     var value: Int = 0 // TIME_SPENT (ms) or TIME_SPENT (ms)
+    var id: Int = 0
     var timestamp: Long = 0 // Mark to filter duplicated events
 
     override fun getOpCode(): Int {
@@ -41,7 +40,8 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
 
         val type = buffer.get(0)
         eventType = EventType.getType(MeshParserUtils.unsignedByteToInt(type))
-        value = buffer.getInt(1)
+        value = buffer.getShort(1).toInt()
+        id = buffer.get(3).toInt()
         timestamp = Calendar.getInstance().timeInMillis
     }
 
@@ -52,9 +52,7 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
     override fun equals(other: Any?): Boolean {
         val comparable = other as NodeEventStatus?
         comparable?.let {
-            return if (comparable.eventType == eventType && comparable.value == value && comparable.srcAddress == srcAddress)
-                return abs(timestamp - comparable.timestamp) <= REJECT_TIME_ELLAPSED
-            else false
+            return it.id == id
         } ?: run { return false }
     }
 

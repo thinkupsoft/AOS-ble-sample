@@ -28,7 +28,7 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
     private val adapter = RendererAdapter()
     private val list = mutableListOf<NodeEventStatus>()
 
-    private val timeoutValues = getRange(0.0, 5.0, 0.5)
+    private val timeoutValues = getRange(0.5, 5.0, 0.5)
     private val delayValues = getRange(0.1, 5.0, 0.1)
     private val threeValues = arrayOf("Low", "Medium", "High")
     private val touchesValues = (1..20 step 1).map { it.toString() }.toTypedArray()
@@ -125,8 +125,10 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
     }
 
     override fun onAction(group: Group?, node: ProvisionedMeshNode?, nodeEventStatus: NodeEventStatus, event: EventType?, time: Long) {
-        list.add(nodeEventStatus)
-        adapter.setItems(list)
+        runOnUiThread {
+            list.add(nodeEventStatus)
+            adapter.setItems(list)
+        }
     }
 
     override fun onStartTraining() {

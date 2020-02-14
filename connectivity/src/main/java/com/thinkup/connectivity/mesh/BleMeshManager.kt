@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
+import android.util.Log
 import com.thinkup.connectivity.utils.Constants
 import no.nordicsemi.android.ble.callback.DataReceivedCallback
 import no.nordicsemi.android.ble.callback.DataSentCallback
@@ -56,6 +57,7 @@ class BleMeshManager(context: Context): LoggableBleManager<BleMeshManagerCallbac
             // This callback will be called each time a notification is received.
             val onDataReceived =
                 DataReceivedCallback { device: BluetoothDevice?, data: Data ->
+                    Log.d("TKUP::DR", data.toString())
                     mCallbacks.onDataReceived(
                         device,
                         mtu,

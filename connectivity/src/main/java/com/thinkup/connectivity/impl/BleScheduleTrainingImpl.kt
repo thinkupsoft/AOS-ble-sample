@@ -36,7 +36,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         if (waitingDeactivation && deactivationDiscarted && it?.eventType == EventType.HIT) {
             waitingDeactivation = false
             deactivationDiscarted = false
-            fisrtHitAddressDiscard = it?.srcAddress
+            fisrtHitAddressDiscard = it.srcAddress
             stopDeactivation()
             start()
         }
@@ -51,7 +51,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                     Log.d("TKUP-NEURAL::EVE", "Group :: ${group.group.name}")
                     tg.steps[group.currentStep].actual++
                     val node = getNode(it.srcAddress)
-                    callback.onAction(group.group, node, it, it.eventType, it.value.toLong())
+                    callback?.onAction(group.group, node, it, it.eventType, it.value.toLong())
                     Log.d("TKUP-NEURAL::EVE", "Config node:: ${node?.nodeName}")
                     configNextStep(tg, node)
                     if (tg.steps[group.currentStep].isCompleted()) {
@@ -84,7 +84,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         repository.getEventMessageLiveData().observeForever(eventObserver)
         started = true
         ended = 0
-        callback.onStartTraining()
+        callback?.onStartTraining()
         delay(trainingGroup[0].actions[0].steps[0].delay)
         stepFirst()
     }
@@ -215,7 +215,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         started = false
         ended = 0
         fisrtHitAddressDiscard = 0
-        callback.onCompleteTraining()
+        callback?.onCompleteTraining()
     }
 
     private fun deactivationMessage() {

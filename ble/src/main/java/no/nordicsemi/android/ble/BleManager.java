@@ -2865,19 +2865,19 @@ public abstract class BleManager<E extends BleManagerCallbacks> extends TimeoutH
 				final boolean notifications = cccd == null || cccd.getValue() == null ||
 						cccd.getValue().length != 2 || cccd.getValue()[0] == 0x01;
 
-				final String dataString = ParserUtils.parse(data);
-				if (notifications) {
-					log(Log.INFO, "Notification received from " +
-							characteristic.getUuid() + ", value: " + dataString);
-					onCharacteristicNotified(gatt, characteristic);
-				} else { // indications
-					log(Log.INFO, "Indication received from " +
-							characteristic.getUuid() + ", value: " + dataString);
-					onCharacteristicIndicated(gatt, characteristic);
-				}
-				if (mBatteryLevelNotificationCallback != null && isBatteryLevelCharacteristic(characteristic)) {
-					mBatteryLevelNotificationCallback.notifyValueChanged(gatt.getDevice(), data);
-				}
+//				final String dataString = ParserUtils.parse(data);
+//				if (notifications) {
+//					log(Log.INFO, "Notification received from " +
+//							characteristic.getUuid() + ", value: " + dataString);
+//					onCharacteristicNotified(gatt, characteristic);
+//				} else { // indications
+//					log(Log.INFO, "Indication received from " +
+//							characteristic.getUuid() + ", value: " + dataString);
+//					onCharacteristicIndicated(gatt, characteristic);
+//				}
+//				if (mBatteryLevelNotificationCallback != null && isBatteryLevelCharacteristic(characteristic)) {
+//					mBatteryLevelNotificationCallback.notifyValueChanged(gatt.getDevice(), data);
+//				}
 				// Notify the notification registered listener, if set
 				final ValueChangedCallback request = mNotificationCallbacks.get(characteristic);
 				if (request != null && request.matches(data)) {

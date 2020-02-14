@@ -96,7 +96,7 @@ class NrfMeshRepository(
     private val meshMessageLiveData: MutableLiveData<MeshMessage?> = SingleLiveEvent()
     private val keepMessageLiveData: MutableLiveData<NodeControlMessageStatus?> = SingleLiveEvent()
     private val eventMessageLiveData: MutableLiveData<NodeEventStatus?> = MutableLiveData()
-    private val trainingMessageLiveData: ComparableSingleEvent<NodeEventStatus?> = ComparableSingleEvent()
+    private val trainingMessageCallback: EventObserver<NodeEventStatus?> = EventObserver()
     // Comparator to delete duplicated events
     private val eventComparator: ComparableEvent<NodeEventStatus> = ComparableEvent()
     // Contains the provisioned nodes
@@ -215,12 +215,8 @@ class NrfMeshRepository(
     /**
      * Returns the [EventMessageLiveData] live data object containing the mesh message
      */
-    fun getTrainingMessageLiveData(): ComparableSingleEvent<NodeEventStatus?> {
-        return trainingMessageLiveData
-    }
-
-    fun flushTrainingMessageLiveData() {
-        trainingMessageLiveData.postValue(null)
+    fun getTrainingMessageLiveData(): EventObserver<NodeEventStatus?> {
+        return trainingMessageCallback
     }
 
     fun getSelectedGroup(): LiveData<Group>? {
@@ -434,6 +430,8 @@ class NrfMeshRepository(
         mtu: Int,
         pdu: ByteArray
     ) {
+        // TODO REMOVE
+        //trainingMessageCallback.postValue(NodeEventStatus(EventType.HIT))
         meshManagerApi.handleNotifications(mtu, pdu)
     }
 
@@ -906,7 +904,7 @@ class NrfMeshRepository(
             Log.d("TKUP-NEURAL::", "Received opCode=${opCode}")
             if (opCode == OpCodes.NT_OPCODE_EVENT) {
                 status = NodeEventStatus(accessMessage)
-                trainingMessageLiveData.postValue(status)
+                trainingMessageCallback.postValue(status)
                 if (!eventComparator.compare(status)) {
                     eventMessageLiveData.postValue(status)
                 }

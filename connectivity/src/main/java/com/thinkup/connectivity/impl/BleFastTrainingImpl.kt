@@ -12,15 +12,13 @@ import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.connectivity.messges.peripheral.*
-import com.thinkup.connectivity.utils.ComparableSingleEvent
+import com.thinkup.connectivity.utils.EventObserver
 import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
-import java.util.*
-import kotlin.random.Random
 
 class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BleBaseTraining(context, setting, repository),
-    BleFastTraining, ComparableSingleEvent.Callback<NodeEventStatus?> {
+    BleFastTraining, EventObserver.Callback<NodeEventStatus?> {
 
     private lateinit var options: FastOptions
 
@@ -29,23 +27,24 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     override fun getSoundValue(): Boolean = options.sound
 
     override fun onPost(eventStatus: NodeEventStatus?) {
-        Log.d("TKUP-NEURAL::EVE", "Unprocess event:: $eventStatus")
+        // TODO REMOVE
+//        stepG(groups[0])
+//        Log.d("TKUP::", eventStatus.toString())
         var ended = 0
         if (eventStatus != null) {
             if (eventStatus.eventType == EventType.HIT || eventStatus.eventType == EventType.TIMEOUT) {
                 groups.forEach { group ->
                     if (group.isFromThis(eventStatus.srcAddress) && group.currentStep > group.lastReceivedStep) {
-                        group.stopFallback()
-                        Log.d("TKUP-NEURAL::EVE", " ${group.group} - Event:: $eventStatus")
                         group.lastReceivedStep++
-                        callback.onAction(
+                        group.stopFallback()
+                        stepG(group)
+                        callback?.onAction(
                             group.group,
                             getNode(eventStatus.srcAddress),
                             eventStatus,
                             eventStatus.eventType,
                             eventStatus.value.toLong()
                         )
-                        stepG(group)
                     }
                     if (group.lastReceivedStep == options.touches) ended++
                 }
@@ -63,7 +62,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     override fun startTraining() = executeService {
         repository.isSending = true
         if (options.startWithCountdown) {
-            callback.onCountdown()
+            callback?.onCountdown()
             countdown()
         } else {
             start()
@@ -75,7 +74,6 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     }
 
     override fun start() = executeService {
-        Log.d("TKUP-NEURAL::", "LedOff to Start")
         bulkMessaging(groups) { group ->
             sendMessage(
                 group.group,
@@ -83,25 +81,19 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                 true
             )
         }
-        repository.flushTrainingMessageLiveData()
-        repository.getTrainingMessageLiveData().setObserver(this)
-        callback.onStartTraining()
-        // delay despues de countdown, antes de primer paso
+        callback?.onStartTraining()
+        // delay after countdown, before first step
         delay(options.delay.toLong())
-        step(groups)
+        stepG(groups[0])
     }
 
     private fun stepG(group: TrainingGroup) = executeService {
-        var ended = 0
         if (group.currentStep < options.touches) {
             group.currentStep++
-            Log.d("TKUP-NEURAL::", " ${group.group} - Step ${group.currentStep}")
-            Log.d("TKUP-NEURAL::", "Delay ${options.delay}")
             val node = group.nodes.random()
             val color = options.colors.random()
             val shape = options.shapes.random()
             node.let {
-                Log.d("TKUP-NEURAL::", "Setting peripheral options - Node = ${node.nodeName}")
                 sendBroadcastMessage(
                     NodeStepPeripheralMessageUnacked(
                         shape, color, options.flashMode,
@@ -109,7 +101,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                         OpCodes.getUnicastMask(node.nodeName.toInt())
                     ), true
                 )
-                // delay entre train y start
+                // delay between train and start
                 delay(options.delay.toLong() - 100)
                 sendBroadcastMessage(
                     NodeControlMessageUnacked(
@@ -118,10 +110,8 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                     )
                 )
             }
-            scheduledFallback(group, node)
+            //scheduledFallback(group, node)
         }
-        if (group.lastReceivedStep == options.touches) ended++
-        if (ended == groups.size) finish()
     }
 
     private fun step(list: List<TrainingGroup>) = executeService {
@@ -129,13 +119,10 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         bulkMessaging(list) { group ->
             if (group.currentStep < options.touches) {
                 group.currentStep++
-                Log.d("TKUP-NEURAL::", " ${group.group} - Step ${group.currentStep}")
-                Log.d("TKUP-NEURAL::", "Delay ${options.delay}")
                 val node = group.nodes.random()
                 val color = options.colors.random()
                 val shape = options.shapes.random()
                 node.let {
-                    Log.d("TKUP-NEURAL::", "Setting peripheral options - Node = ${node.nodeName}")
                     sendBroadcastMessage(
                         NodeStepPeripheralMessageUnacked(
                             shape, color, options.flashMode,
@@ -143,7 +130,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                             OpCodes.getUnicastMask(node.nodeName.toInt())
                         ), true
                     )
-                    // delay entre train y start
+                    // delay between train and start
                     delay(options.delay.toLong() - 100)
                     sendBroadcastMessage(
                         NodeControlMessageUnacked(
@@ -162,7 +149,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     private fun scheduledFallback(group: TrainingGroup, node: ProvisionedMeshNode) {
         group.missedStepFallback(options.timeout) {
             step(listOf(group))
-            callback.onAction(
+            callback?.onAction(
                 group.group, node, NodeEventStatus(EventType.TIMEOUT, options.timeout),
                 EventType.TIMEOUT, options.timeout.toLong()
             )
@@ -170,12 +157,11 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     }
 
     override fun finish() {
-        Log.d("TKUP-NEURAL::", "Finish")
         repository.getTrainingMessageLiveData().removeObserver()
         if (groupsnitialized()) {
             bulkMessaging(groups) { group ->
                 group.stopFallback()
-                // delay antes de end light
+                // delay before end light
                 delay(REPLICATE_DELAY)
                 if (options.endWithLight) {
                     autoOffLedMessage(
@@ -189,6 +175,6 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
             }
         }
         repository.isSending = false
-        callback.onCompleteTraining()
+        callback?.onCompleteTraining()
     }
 }

@@ -121,7 +121,7 @@ class NodeDetailActivity : BaseActivity() {
 
         // Config
         timeout.minValue = 0
-        timeout.maxValue = 10
+        timeout.maxValue = 60
         timeout.wrapSelectorWheel = true
         nodeIdText.setText(node?.nodeName ?: "")
 
