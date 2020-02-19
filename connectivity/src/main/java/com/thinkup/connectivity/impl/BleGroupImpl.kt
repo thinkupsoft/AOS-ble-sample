@@ -7,10 +7,7 @@ import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.exceptions.AppKeyException
 import com.thinkup.connectivity.mesh.NrfMeshRepository
-import com.thinkup.connectivity.messges.ColorParams
-import com.thinkup.connectivity.messges.NO_CONFIG
-import com.thinkup.connectivity.messges.PeripheralParams
-import com.thinkup.connectivity.messges.ShapeParams
+import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.config.NodeConfigMessageUnacked
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessageUnacked
@@ -26,19 +23,12 @@ import no.nordicsemi.android.meshprovisioner.utils.MeshAddress
 
 class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BaseBleImpl(context, setting, repository), BleGroup {
 
-    companion object {
-        const val GROUP_A = "A"
-        const val GROUP_B = "B"
-        const val GROUP_C = "C"
-        const val GROUP_D = "D"
-    }
-
     override fun addGroup(name: String): Boolean {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         val newGroup = network?.createGroup(network.selectedProvisioner, name)
         newGroup?.let {
             if (network.addGroup(it)) {
-                repository.getMeshManagerApi().updateDb()
+                repository.getMeshManagerApi().addGroupDb(it)
                 return true
             }
         }
@@ -48,7 +38,7 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
     override fun removeGroup(group: Group): Boolean {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         if (network?.removeGroup(group) == true) {
-            repository.getMeshManagerApi().updateDb()
+            repository.getMeshManagerApi().deleteGroupDb(group)
             return true
         }
         return false
@@ -100,18 +90,24 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
     override fun identify(groups: List<Group>) {
         bulkMessaging(groups) {
             identify(it)
-            delay(BULK_DELAY)
         }
     }
 
     override fun identify(group: Group) {
+        val ids = mutableListOf<Int>()
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
+        val nodes = getGroupNodes(group)
         val models = network?.getModels(group)
         if (models?.isNotEmpty() == true) {
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                peripheralMessage(group, identifyMessage(group, appKey, model.modelId, model.companyIdentifier))
+                nodes.forEachIndexed { index, node ->
+                    val id = node.nodeName.toInt()
+                    ids.add(id)
+                    sendBroadcastMessage(identifyMessage(group, index, id, appKey, model.modelId, model.companyIdentifier))
+                }
+                autoOffLedMessage(ids, appKey, model.modelId, model.companyIdentifier)
             }
         }
     }
@@ -166,29 +162,44 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
         }
     }
 
-    private fun identifyMessage(group: Group, appKey: ApplicationKey, modelId: Int, companyIdentifier: Int): NodeStepPeripheralMessageUnacked {
-        var shape = ShapeParams.LETTER_A
-        var color = ColorParams.COLOR_GREEN
-        when {
-            group.name.endsWith(GROUP_A) -> {
-                shape = ShapeParams.LETTER_A
-                color = ColorParams.COLOR_GREEN
-            }
-            group.name.endsWith(GROUP_B) -> {
-                shape = ShapeParams.LETTER_B
-                color = ColorParams.COLOR_RED
-            }
-            group.name.endsWith(GROUP_C) -> {
-                shape = ShapeParams.LETTER_C
-                color = ColorParams.COLOR_BLUE
-            }
-            group.name.endsWith(GROUP_D) -> {
-                shape = ShapeParams.LETTER_D
-                color = ColorParams.COLOR_YELLOW
+    private fun identifyMessage(
+        group: Group,
+        index: Int,
+        id: Int,
+        appKey: ApplicationKey,
+        modelId: Int,
+        companyIdentifier: Int
+    ): NodeStepPeripheralMessageUnacked {
+        val groups = repository.getGroups().value
+        var position = 0
+        groups?.let {
+            for (i in it.indices) {
+                if (groups[i].address == group.address) {
+                    position = i
+                    break
+                }
             }
         }
+        val color = when (position) {
+            0 -> ColorParams.COLOR_GREEN
+            1 -> ColorParams.COLOR_RED
+            2 -> ColorParams.COLOR_BLUE
+            else -> ColorParams.COLOR_YELLOW
+        }
+        val shape = when (index + 1) {
+            1 -> ShapeParams.NUMBER_1
+            2 -> ShapeParams.NUMBER_2
+            3 -> ShapeParams.NUMBER_3
+            4 -> ShapeParams.NUMBER_4
+            5 -> ShapeParams.NUMBER_5
+            6 -> ShapeParams.NUMBER_6
+            7 -> ShapeParams.NUMBER_7
+            8 -> ShapeParams.NUMBER_8
+            9 -> ShapeParams.NUMBER_9
+            else -> ShapeParams.NUMBER_0
+        }
         return NodeStepPeripheralMessageUnacked(
-            shape, color, PeripheralParams.LED_PERMANENT, appKey, modelId, companyIdentifier
+            shape, color, PeripheralParams.LED_PERMANENT, appKey, modelId, companyIdentifier, OpCodes.getUnicastMask(id)
         )
     }
 

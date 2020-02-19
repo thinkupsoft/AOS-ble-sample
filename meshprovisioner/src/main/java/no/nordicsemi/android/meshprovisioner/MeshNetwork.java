@@ -22,7 +22,6 @@ import no.nordicsemi.android.meshprovisioner.utils.MeshAddress;
 @Entity(tableName = "mesh_network")
 public final class MeshNetwork extends BaseMeshNetwork {
 
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     public MeshNetwork(final String meshUUID) {
         super(meshUUID);
     }
@@ -480,9 +479,20 @@ public final class MeshNetwork extends BaseMeshNetwork {
      * @param group group to be removed
      */
     public boolean removeGroup(@NonNull final Group group) {
-        if (groups.remove(group)) {
-            notifyGroupDeleted(group);
-            return true;
+        int contains = -1;
+        for (int i=0; i < groups.size(); i++){
+            if (groups.get(i).id == group.id){
+                contains = i;
+            }
+
+        }
+        if (contains != -1) {
+            if (groups.remove(contains) != null) {
+                notifyGroupDeleted(group);
+                return true;
+            }
+        }else{
+            System.out.println("Thinkup: GROUP DOESNT EXIST");
         }
         return false;
     }
@@ -672,7 +682,6 @@ public final class MeshNetwork extends BaseMeshNetwork {
      *
      * @param ivUpdateState 0 if normal operation and 1 if iv update is active
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     public void setIvUpdateState(@IvUpdateStates final int ivUpdateState) {
         this.ivUpdateState = ivUpdateState;
     }

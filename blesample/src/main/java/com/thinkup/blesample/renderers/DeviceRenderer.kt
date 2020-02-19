@@ -19,7 +19,7 @@ class DeviceRenderer(private val callback: Callback) :
             textView.isClickable = false
             callback.onConnect(model, textView)
         }
-        view.deviceStatus.isGone = true
+        view.deviceStatus.visibility = View.GONE
     }
 
     override fun create(parent: ViewGroup): View = inflate(R.layout.item_scan_device, parent, false)

@@ -91,7 +91,7 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
         val options = FastOptions(
             opTouches, opTimeout.toInt(), opDelay.toInt(),
             selectedShapes, selectedColors,
-            countdown.isChecked, if (ledmode.isChecked) PeripheralParams.LED_FLASH else PeripheralParams.LED_PERMANENT,
+            countdown.isChecked, if (ledmode.isChecked) PeripheralParams.LED_FAST_FLASH else PeripheralParams.LED_PERMANENT,
             distance.selectedItemPosition, dimmer.selectedItemPosition,
             sound.isChecked, endlight.isChecked
         )
@@ -132,15 +132,17 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
     }
 
     override fun onStartTraining() {
-        list.clear()
-        adapter.setItems(list)
+        runOnUiThread {
+            list.clear()
+            adapter.setItems(list)
+        }
     }
 
     override fun onStopTraining() {
-        Toast.makeText(this, "Stopped", Toast.LENGTH_SHORT).show()
+        runOnUiThread { Toast.makeText(this, "Stopped", Toast.LENGTH_SHORT).show() }
     }
 
     override fun onCompleteTraining() {
-        Toast.makeText(this, "Complete", Toast.LENGTH_SHORT).show()
+        runOnUiThread { Toast.makeText(this, "Complete", Toast.LENGTH_SHORT).show() }
     }
 }

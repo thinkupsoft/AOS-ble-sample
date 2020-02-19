@@ -141,6 +141,11 @@ abstract class MeshNetworkDb extends RoomDatabase {
                 meshNetwork).execute();
     }
 
+    void loadGroups(@NonNull final MeshNetworkDao dao,
+                     @NonNull final GroupsDao groupsDao, @NonNull GroupsLoaderCallback loaderCallback) {
+        new LoadGroupsAsyncTask(dao,
+                groupsDao, loaderCallback).execute();
+    }
     void loadNetwork(@NonNull final MeshNetworkDao dao,
                      @NonNull final NetworkKeysDao netKeysDao,
                      @NonNull final ApplicationKeysDao appKeysDao,
@@ -244,13 +249,21 @@ abstract class MeshNetworkDb extends RoomDatabase {
         new InsertGroupAsyncTask(dao).execute(group);
     }
 
+    void insertInstGroup(@NonNull final GroupDao dao, @NonNull final Group group) {
+        dao.insert(group);
+    }
+
+    void removeInstGroup(@NonNull final GroupDao dao, @NonNull final Group group) {
+        dao.delete(group);
+    }
+
     void updateGroup(@NonNull final GroupDao dao, @NonNull final Group group) {
         new UpdateGroupAsyncTask(dao).execute(group);
     }
 
-    void updateGroups(@NonNull final GroupsDao dao, @NonNull final List<Group> groups) {
-        new UpdateGroupsAsyncTask(dao, groups).execute();
-    }
+//    void updateGroups(@NonNull final GroupsDao dao, @NonNull final List<Group> groups) {
+//        new UpdateGroupsAsyncTask(dao, groups).execute();
+//    }
 
     void deleteGroup(@NonNull final GroupDao dao, @NonNull final Group group) {
         new DeleteGroupAsyncTask(dao).execute(group);
@@ -316,6 +329,30 @@ abstract class MeshNetworkDb extends RoomDatabase {
             }
             return null;
         }
+    }
+    private static class LoadGroupsAsyncTask extends AsyncTask<Void, Void, MeshNetwork>{
+        private final MeshNetworkDao meshNetworkDao;
+        private final GroupsDao groupsDao;
+        private final GroupsLoaderCallback mloaderCallback;
+
+        LoadGroupsAsyncTask(@NonNull final MeshNetworkDao meshNetworkDao,@NonNull final GroupsDao groupsDao, @NonNull GroupsLoaderCallback loaderCallback){
+            this.meshNetworkDao = meshNetworkDao;
+            this.groupsDao = groupsDao;
+            this.mloaderCallback = loaderCallback;
+        }
+
+        @Override
+        protected MeshNetwork doInBackground(Void... voids) {
+            final MeshNetwork meshNetwork = meshNetworkDao.getMeshNetwork(true);
+            if (meshNetwork != null) {
+                meshNetwork.groups = new ArrayList<>();
+                meshNetwork.groups = groupsDao.loadGroups(meshNetwork.getMeshUUID());
+            }
+            Log.d("tag", "Thinkup mesh groups: " + meshNetwork.groups.size());
+            mloaderCallback.onGroupsLoaded(meshNetwork.groups);
+            return meshNetwork;
+        }
+
     }
 
     private static class LoadNetworkAsyncTask extends AsyncTask<Void, Void, MeshNetwork> {
@@ -416,7 +453,7 @@ abstract class MeshNetworkDb extends RoomDatabase {
             appKeyDao.update(network.getAppKeys());
             provisionersDao.update(network.getProvisioners());
             nodesDao.update(network.getNodes());
-            groupsDao.update(network.getGroups());
+//            groupsDao.update(network.getGroups());
             sceneDao.update(network.getScenes());
             return null;
         }
@@ -688,22 +725,22 @@ abstract class MeshNetworkDb extends RoomDatabase {
         }
     }
 
-    private static class UpdateGroupsAsyncTask extends AsyncTask<Void, Void, Void> {
-
-        private final GroupsDao mAsyncTaskDao;
-        private final List<Group> mGroups;
-
-        UpdateGroupsAsyncTask(@NonNull final GroupsDao dao, @NonNull final List<Group> groups) {
-            mAsyncTaskDao = dao;
-            mGroups = groups;
-        }
-
-        @Override
-        protected Void doInBackground(final Void... voids) {
-            mAsyncTaskDao.update(mGroups);
-            return null;
-        }
-    }
+//    private static class UpdateGroupsAsyncTask extends AsyncTask<Void, Void, Void> {
+//
+//        private final GroupsDao mAsyncTaskDao;
+//        private final List<Group> mGroups;
+//
+//        UpdateGroupsAsyncTask(@NonNull final GroupsDao dao, @NonNull final List<Group> groups) {
+//            mAsyncTaskDao = dao;
+//            mGroups = groups;
+//        }
+//
+//        @Override
+//        protected Void doInBackground(final Void... voids) {
+//            mAsyncTaskDao.update(mGroups);
+//            return null;
+//        }
+//    }
 
     private static class DeleteGroupAsyncTask extends AsyncTask<Group, Void, Void> {
 

@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.os.Handler
+import android.os.Looper
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -37,7 +38,9 @@ class NrfMeshRepository(
     MeshProvisioningStatusCallbacks,
     MeshStatusCallbacks,
     MeshManagerCallbacks,
-    BleMeshManagerCallbacks {
+    BleMeshManagerCallbacks,
+    RepositoryLoaderGroupsCallback{
+
 
     private val TAG = NrfMeshRepository::class.java.simpleName
     private val ATTENTION_TIMER = 5
@@ -47,6 +50,7 @@ class NrfMeshRepository(
         meshManagerApi.setProvisioningStatusCallbacks(this)
         meshManagerApi.setMeshStatusCallbacks(this)
         meshManagerApi.loadMeshNetwork()
+        meshManagerApi.setLoaderGroupsCallback(this)
         //Initialize the ble manager
         bleMeshManager.setGattCallbacks(this)
     }
@@ -103,7 +107,7 @@ class NrfMeshRepository(
     private val provisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
     private val groups = MutableLiveData<List<Group>>()
     private val transactionStatus: MutableLiveData<TransactionStatus?> = SingleLiveEvent()
-    private var handler: Handler = Handler()
+    private var handler: Handler = Handler(Looper.getMainLooper())
     private var unprovisionedMeshNode: UnprovisionedMeshNode? = null
     private var provisionedMeshNode: ProvisionedMeshNode? = null
     private var isReconnectingFlag = false
@@ -425,13 +429,15 @@ class NrfMeshRepository(
 
     fun getBatteryAverage(): LiveData<Int?> = batteryAverage
 
+    override fun onGroupsLoaded( groupsList: List<Group>) {
+        groups.postValue(groupsList)
+    }
+
     override fun onDataReceived(
         bluetoothDevice: BluetoothDevice?,
         mtu: Int,
         pdu: ByteArray
     ) {
-        // TODO REMOVE
-        //trainingMessageCallback.postValue(NodeEventStatus(EventType.HIT))
         meshManagerApi.handleNotifications(mtu, pdu)
     }
 
@@ -1158,7 +1164,7 @@ class NrfMeshRepository(
     fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
         if (!isProvisioning) {
             isSending = true
-            Handler().postDelayed({ isSending = false }, 100)
+            Handler(Looper.getMainLooper()).postDelayed({ isSending = false }, 100)
         }
         meshManagerApi.createMeshPdu(unicastAddress, message)
     }

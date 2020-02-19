@@ -32,6 +32,7 @@ import java.nio.ByteOrder;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -66,7 +67,7 @@ import no.nordicsemi.android.meshprovisioner.utils.SecureUtils;
 
 
 @SuppressWarnings("WeakerAccess")
-public class MeshManagerApi implements MeshMngrApi {
+public class MeshManagerApi implements MeshMngrApi, GroupsLoaderCallback {
 
     private static final String TAG = MeshManagerApi.class.getSimpleName();
     public final static UUID MESH_PROVISIONING_UUID = UUID.fromString("00001827-0000-1000-8000-00805F9B34FB");
@@ -101,6 +102,7 @@ public class MeshManagerApi implements MeshMngrApi {
     private Context mContext;
     private final Handler mHandler;
     private MeshManagerCallbacks mMeshManagerCallbacks;
+    private RepositoryLoaderGroupsCallback mRepositoryCallback;
     private MeshProvisioningHandler mMeshProvisioningHandler;
     private MeshMessageHandler mMeshMessageHandler;
     private byte[] mIncomingBuffer;
@@ -152,6 +154,9 @@ public class MeshManagerApi implements MeshMngrApi {
         initDb(context);
 
     }
+    public void setLoaderGroupsCallback(@NonNull final RepositoryLoaderGroupsCallback repositoryCallback){
+        mRepositoryCallback = repositoryCallback;
+    }
 
     @Override
     public void setMeshManagerCallbacks(@NonNull final MeshManagerCallbacks callbacks) {
@@ -177,6 +182,10 @@ public class MeshManagerApi implements MeshMngrApi {
     @Override
     public MeshNetwork getMeshNetwork() {
         return mMeshNetwork;
+    }
+
+    private void updateGroups(){
+        mMeshNetworkDb.loadGroups(mMeshNetworkDao, mGroupsDao, this);
     }
 
     private void initBouncyCastle() {
@@ -1106,14 +1115,14 @@ public class MeshManagerApi implements MeshMngrApi {
 
         @Override
         public void onGroupAdded(@NonNull final Group group) {
-            mMeshNetworkDb.insertGroup(mGroupDao, group);
+//            mMeshNetworkDb.insertGroup(mGroupDao, group);
             mMeshManagerCallbacks.onNetworkUpdated(mMeshNetwork);
         }
 
         @Override
         public void onGroupUpdated(@NonNull final Group group) {
-            mMeshNetworkDb.updateGroup(mGroupDao, group);
-            mMeshManagerCallbacks.onNetworkUpdated(mMeshNetwork);
+//            mMeshNetworkDb.updateGroup(mGroupDao, group);
+//            mMeshManagerCallbacks.onNetworkUpdated(mMeshNetwork);
         }
 
         @Override
@@ -1139,6 +1148,7 @@ public class MeshManagerApi implements MeshMngrApi {
             mMeshNetworkDb.deleteScene(mSceneDao, scene);
             mMeshManagerCallbacks.onNetworkUpdated(mMeshNetwork);
         }
+
     };
 
     private boolean isAddressValid(@NonNull final UnprovisionedMeshNode node) {
@@ -1153,7 +1163,21 @@ public class MeshManagerApi implements MeshMngrApi {
         return true;
     }
 
-    public void updateDb() {
-        mMeshNetworkDb.updateGroups(mGroupsDao, mMeshNetwork.groups);
+    public void addGroupDb(Group group) {
+        mMeshNetworkDb.insertInstGroup(mGroupDao, group);
+        updateGroups();
+    }
+
+    public void deleteGroupDb(Group group) {
+        Log.d("", "Thinkup delete mesh group: "+ mMeshNetwork.groups.size());
+        mMeshNetworkDb.removeInstGroup(mGroupDao, group);
+        updateGroups();
+
+    }
+
+    @Override
+    public void onGroupsLoaded(List<Group> groupsList) {
+        mMeshNetwork.groups = groupsList;
+        mRepositoryCallback.onGroupsLoaded(groupsList);
     }
 }

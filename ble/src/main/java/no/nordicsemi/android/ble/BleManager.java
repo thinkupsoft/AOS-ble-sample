@@ -2057,7 +2057,8 @@ public abstract class BleManager<E extends BleManagerCallbacks> extends TimeoutH
 		// Add the new task to the end of the queue.
 		final BleManagerGattCallback finalCallback = callback;
 		finalCallback.enqueue(request);
-		runOnUiThread(() -> finalCallback.nextRequest(false));
+		//runOnUiThread(() -> finalCallback.nextRequest(false));
+		finalCallback.nextRequest(false);
 	}
 
 	/**

@@ -27,9 +27,6 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     override fun getSoundValue(): Boolean = options.sound
 
     override fun onPost(eventStatus: NodeEventStatus?) {
-        // TODO REMOVE
-//        stepG(groups[0])
-//        Log.d("TKUP::", eventStatus.toString())
         var ended = 0
         if (eventStatus != null) {
             if (eventStatus.eventType == EventType.HIT || eventStatus.eventType == EventType.TIMEOUT) {
@@ -74,83 +71,50 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     }
 
     override fun start() = executeService {
-        bulkMessaging(groups) { group ->
-            sendMessage(
-                group.group,
-                NodeControlMessageUnacked(ControlParams.SET_LED_OFF.toByte(), NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
-                true
-            )
-        }
+        sendBroadcastMessage(
+            NodeControlMessageUnacked(
+                ControlParams.SET_LED_OFF.toByte(), NO_CONFIG,
+                appkey, model.modelId, model.companyIdentifier, DYNAMIC_MASK
+            ), true
+        )
         callback?.onStartTraining()
         // delay after countdown, before first step
         delay(options.delay.toLong())
-        stepG(groups[0])
+        bulkMessaging(groups) { group ->
+            stepG(group)
+        }
     }
 
     private fun stepG(group: TrainingGroup) = executeService {
         if (group.currentStep < options.touches) {
             group.currentStep++
-            val node = group.nodes.random()
+            val node = group.nodeIds.random()
             val color = options.colors.random()
             val shape = options.shapes.random()
-            node.let {
-                sendBroadcastMessage(
-                    NodeStepPeripheralMessageUnacked(
-                        shape, color, options.flashMode,
-                        appkey, model.modelId, model.companyIdentifier,
-                        OpCodes.getUnicastMask(node.nodeName.toInt())
-                    ), true
+            sendBroadcastMessage(
+                NodeStepPeripheralMessageUnacked(
+                    shape, color, options.flashMode,
+                    appkey, model.modelId, model.companyIdentifier,
+                    OpCodes.getUnicastMask(node)
+                ), true
+            )
+            // delay between train and start
+            delay(options.delay.toLong() - 100)
+            sendBroadcastMessage(
+                NodeControlMessageUnacked(
+                    ControlParams.START.toByte(), options.timeout, appkey, model.modelId,
+                    model.companyIdentifier, OpCodes.getUnicastMask(node)
                 )
-                // delay between train and start
-                delay(options.delay.toLong() - 100)
-                sendBroadcastMessage(
-                    NodeControlMessageUnacked(
-                        ControlParams.START.toByte(), options.timeout, appkey, model.modelId,
-                        model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
-                    )
-                )
-            }
-            //scheduledFallback(group, node)
+            )
+            scheduledFallback(group, node)
         }
     }
 
-    private fun step(list: List<TrainingGroup>) = executeService {
-        var ended = 0
-        bulkMessaging(list) { group ->
-            if (group.currentStep < options.touches) {
-                group.currentStep++
-                val node = group.nodes.random()
-                val color = options.colors.random()
-                val shape = options.shapes.random()
-                node.let {
-                    sendBroadcastMessage(
-                        NodeStepPeripheralMessageUnacked(
-                            shape, color, options.flashMode,
-                            appkey, model.modelId, model.companyIdentifier,
-                            OpCodes.getUnicastMask(node.nodeName.toInt())
-                        ), true
-                    )
-                    // delay between train and start
-                    delay(options.delay.toLong() - 100)
-                    sendBroadcastMessage(
-                        NodeControlMessageUnacked(
-                            ControlParams.START.toByte(), options.timeout, appkey, model.modelId,
-                            model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
-                        )
-                    )
-                }
-                scheduledFallback(group, node)
-            }
-            if (group.lastReceivedStep == options.touches) ended++
-            if (ended == groups.size) finish()
-        }
-    }
-
-    private fun scheduledFallback(group: TrainingGroup, node: ProvisionedMeshNode) {
+    private fun scheduledFallback(group: TrainingGroup, node: Int) {
         group.missedStepFallback(options.timeout) {
-            step(listOf(group))
+            stepG(group)
             callback?.onAction(
-                group.group, node, NodeEventStatus(EventType.TIMEOUT, options.timeout),
+                group.group, group.nodes.find { it.nodeName == node.toString() }, NodeEventStatus(EventType.TIMEOUT, options.timeout),
                 EventType.TIMEOUT, options.timeout.toLong()
             )
         }

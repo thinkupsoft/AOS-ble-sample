@@ -31,7 +31,15 @@ object OpCodes {
 
     fun getUnicastMask(index: Int): String {
         var mask = BASIC_MASK
-        mask = mask.replaceRange(index, index+1, "1")
+        mask = mask.replaceRange(index, index + 1, "1")
+        return mask
+    }
+
+    fun getGroupMask(index: List<Int>): String {
+        var mask = BASIC_MASK
+        index.forEach { i ->
+            mask = mask.replaceRange(i, i + 1, "1")
+        }
         return mask
     }
 }

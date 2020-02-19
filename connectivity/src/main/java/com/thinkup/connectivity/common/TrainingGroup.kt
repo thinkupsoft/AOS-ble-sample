@@ -9,6 +9,7 @@ class TrainingGroup(
     val address: Int,
     val group: Group,
     val nodes: List<ProvisionedMeshNode>,
+    val nodeIds: List<Int>,
     var lastReceivedStep: Int,
     var currentStep: Int
 ) {

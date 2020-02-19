@@ -9,7 +9,8 @@ import no.nordicsemi.android.support.v18.scanner.ScanResult
 @Parcelize
 class ExtendedBluetoothDevice(
     val scanResult: ScanResult,
-    var beacon: MeshBeacon? = null
+    var beacon: MeshBeacon? = null,
+    var timestamp: Long = System.currentTimeMillis()
 ) : Parcelable {
 
     val device: BluetoothDevice = scanResult.device

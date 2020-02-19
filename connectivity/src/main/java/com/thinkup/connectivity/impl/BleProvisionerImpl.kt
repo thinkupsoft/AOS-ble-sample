@@ -2,6 +2,7 @@ package com.thinkup.connectivity.impl
 
 import android.content.Context
 import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.thinkup.connectivity.BleProvisioner
@@ -37,7 +38,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
     private var status = MutableLiveData<Status>()
     private var device: ExtendedBluetoothDevice? = null
     private var meshNode: ProvisionedMeshNode? = null
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
     private var runnable = Runnable {}
 
     private fun handlerBindAppKey(meshNode: ProvisionedMeshNode) {
@@ -160,7 +161,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
                 val provisioner: Provisioner = network.selectedProvisioner
                 val unicast: Int = network.nextAvailableUnicastAddress(elementCount, provisioner)
                 network.assignUnicastAddress(unicast)
-                Handler().postDelayed({ provisioningAction(node) }, 200)
+                Handler(Looper.getMainLooper()).postDelayed({ provisioningAction(node) }, 200)
             }
         }
     }
@@ -193,6 +194,6 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
         handler.removeCallbacks(runnable)
         status.postValue(Status.FULL_CONFIGURED)
         if (setting.enabledProvisionConfig())
-            Handler().postDelayed({ configMessage(meshNode) }, STEP_TIMEOUT)
+            Handler(Looper.getMainLooper()).postDelayed({ configMessage(meshNode) }, STEP_TIMEOUT)
     }
 }

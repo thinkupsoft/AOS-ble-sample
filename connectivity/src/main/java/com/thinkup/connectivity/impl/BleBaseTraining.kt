@@ -70,10 +70,14 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
         }
     }
 
-
     protected fun set(groups: List<Group>?, callback: TrainingCallback, action: (() -> Unit)? = null) = executeService {
-        this.groups = groups?.map { TrainingGroup(it.address, it, getGroupNodes(it), 0, 0) }
-            ?: getGroups().value!!.map { TrainingGroup(it.address, it, getGroupNodes(it), 0, 0) }
+        this.groups = groups?.map {
+            val nodes = getGroupNodes(it)
+            TrainingGroup(it.address, it, nodes, nodes.map { n -> n.nodeName.toInt() }, 0, 0)
+        } ?: getGroups().value!!.map {
+            val nodes = getGroupNodes(it)
+            TrainingGroup(it.address, it, nodes, nodes.map { n -> n.nodeName.toInt() }, 0, 0)
+        }
         this.callback = callback
         repository.isSending = true
         callback.onSettingStart()

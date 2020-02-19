@@ -9,6 +9,7 @@ import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.BROADCAST
 import com.thinkup.connectivity.messges.ControlParams
 import com.thinkup.connectivity.messges.DYNAMIC_MASK
+import com.thinkup.connectivity.messges.OpCodes
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.utils.TimeoutLiveData
 import kotlinx.coroutines.*
@@ -179,6 +180,23 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
             TimeoutLiveData<Any?>(timeout, null)
             {
                 sendMessage(unicastAddress, NodeControlMessageUnacked(ControlParams.SET_LED_OFF.toByte(), 0, appkey, modelId, companyId))
+            }
+        }
+    }
+
+    fun autoOffLedMessage(
+        ids: List<Int>,
+        appkey: ApplicationKey,
+        modelId: Int,
+        companyId: Int,
+        timeout: Long = AUTO_OFF_LEDS
+    ) {
+        executeService {
+            delay(REPLICATE_DELAY)
+            sendBroadcastMessage(NodeControlMessageUnacked(ControlParams.SET_LED_ON.toByte(), 0, appkey, modelId, companyId, OpCodes.getGroupMask(ids)))
+            TimeoutLiveData<Any?>(timeout, null)
+            {
+                sendBroadcastMessage(NodeControlMessageUnacked(ControlParams.SET_LED_OFF.toByte(), 0, appkey, modelId, companyId, OpCodes.getGroupMask(ids)))
             }
         }
     }
