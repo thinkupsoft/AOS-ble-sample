@@ -262,20 +262,28 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
     }
 
     override fun onAction(group: Group?, node: ProvisionedMeshNode?, nodeEventStatus: NodeEventStatus, event: EventType?, time: Long) {
-        list.add(nodeEventStatus)
-        adapter.setItems(list)
+        runOnUiThread {
+            list.add(nodeEventStatus)
+            adapter.setItems(list)
+        }
     }
 
     override fun onStartTraining() {
-        list.clear()
-        adapter.setItems(list)
+        runOnUiThread {
+            list.clear()
+            adapter.setItems(list)
+        }
     }
 
     override fun onStopTraining() {
-        Toast.makeText(this, "Stopped", Toast.LENGTH_SHORT).show()
+        runOnUiThread {
+            Toast.makeText(this, "Stopped", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onCompleteTraining() {
-        Toast.makeText(this, "Complete", Toast.LENGTH_SHORT).show()
+        runOnUiThread {
+            Toast.makeText(this, "Complete", Toast.LENGTH_SHORT).show()
+        }
     }
 }

@@ -2,7 +2,6 @@ package com.thinkup.connectivity.impl
 
 import android.content.Context
 import android.util.Log
-import androidx.lifecycle.Observer
 import com.thinkup.connectivity.BleScheduleTraining
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.common.*
@@ -11,6 +10,7 @@ import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
+import com.thinkup.connectivity.utils.EventObserver
 import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
@@ -18,40 +18,31 @@ import java.util.*
 import kotlin.random.Random
 
 class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BleBaseTraining(context, setting, repository),
-    BleScheduleTraining {
+    BleScheduleTraining, EventObserver.Callback<NodeEventStatus?> {
 
     private lateinit var options: ScheduleOptions
     private lateinit var trainingGroup: List<GroupSteps>
-    private var started = false
     private var waitingDeactivation = false
-    private var deactivationDiscarted = false
-    private var fisrtHitAddressDiscard : Int = 0
     private var ended = 0
 
     override fun getDimmerValue(): Int = options.dimmer
     override fun getDistanceValue(): Int = options.distance
     override fun getSoundValue(): Boolean = options.sound
 
-    private val deactivationObserver = Observer<NodeEventStatus?> {
-        if (waitingDeactivation && deactivationDiscarted && it?.eventType == EventType.HIT) {
+    override fun onPost(e: NodeEventStatus?) {
+        if (waitingDeactivation && e?.eventType == EventType.HIT) {
             waitingDeactivation = false
-            deactivationDiscarted = false
-            fisrtHitAddressDiscard = it.srcAddress
             stopDeactivation()
             start()
-        }
-        deactivationDiscarted = true
-    }
-    private val eventObserver = Observer<NodeEventStatus?> {
-        if (it is NodeEventStatus && started && (it.eventType == EventType.HIT || it.eventType == EventType.TIMEOUT)) {
-            Log.d("TKUP-NEURAL::EVE", "$it")
+        } else if (e is NodeEventStatus && (e.eventType == EventType.HIT || e.eventType == EventType.TIMEOUT)) {
+            Log.d("TKUP-NEURAL::EVE", "$e")
             trainingGroup.forEach { tg ->
                 val group = tg.group
-                if (group.isFromThis(it.srcAddress) && it.srcAddress != fisrtHitAddressDiscard) {
+                if (group.isFromThis(e.srcAddress)) {
                     Log.d("TKUP-NEURAL::EVE", "Group :: ${group.group.name}")
                     tg.steps[group.currentStep].actual++
-                    val node = getNode(it.srcAddress)
-                    callback?.onAction(group.group, node, it, it.eventType, it.value.toLong())
+                    val node = getNode(e.srcAddress)
+                    callback?.onAction(group.group, node, e, e.eventType, e.value.toLong())
                     Log.d("TKUP-NEURAL::EVE", "Config node:: ${node?.nodeName}")
                     configNextStep(tg, node)
                     if (tg.steps[group.currentStep].isCompleted()) {
@@ -65,7 +56,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                     }
                     if (group.currentStep == tg.steps.size) ended++
                     Log.d("TKUP-NEURAL::EVE", "Ended:: $ended")
-                } else fisrtHitAddressDiscard = 0
+                }
             }
         }
         if (ended == groups.size) finish()
@@ -80,12 +71,10 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 true
             )
         }
-        repository.flushEventMessageLiveData()
-        repository.getEventMessageLiveData().observeForever(eventObserver)
-        started = true
+        repository.getTrainingMessageCallback().setObserver(this)
         ended = 0
         callback?.onStartTraining()
-        delay(trainingGroup[0].actions[0].steps[0].delay)
+        delay(trainingGroup[0].actions[0].steps[0].delay - DELTA_STEP_DELAY)
         stepFirst()
     }
 
@@ -95,10 +84,9 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
             trainingGroup.actions.find { it.nodeIndex == index }?.steps?.firstOrNull { s -> !s.sended }?.let { snc ->
                 val shape = snc.shapes.random()
                 Log.d("TKUP-NEURAL::EVE", "Configured ${shape}, ${snc.color}, ${snc.led}")
-                sendMessage(
-                    node,
+                sendBroadcastMessage(
                     NodeStepPeripheralMessageUnacked(
-                        shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier
+                        shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
                     )
                 )
                 snc.sended = true
@@ -107,6 +95,8 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
     }
 
     private fun startNextStep(step: GroupSteps) = executeService {
+        println("Thinkup: Next Step")
+
         val currentStep = step.group.currentStep
         val stepActions = mutableListOf<StepNodeConfig>()
         step.actions.forEach { action ->
@@ -114,14 +104,13 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 stepActions.add(snc)
             }
         }
-        delay(stepActions[0].delay)
+        delay(stepActions[0].delay - DELTA_STEP_DELAY)
         bulkMessaging(stepActions) { snc ->
             val node = step.group.nodes[snc.nodeIndex]
             Log.d("TKUP-NEURAL::EVE", "Started ${snc.timeout}")
-            sendMessage(
-                node,
+            sendBroadcastMessage(
                 NodeControlMessageUnacked(
-                    ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier
+                    ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
                 )
             )
         }
@@ -129,6 +118,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
 
     private fun stepFirst() = executeService {
         bulkMessaging(trainingGroup) {
+            println("Thinkup: First Step")
             val currentStep = it.group.currentStep
             val stepActions = mutableListOf<StepNodeConfig>()
             Log.d("TKUP-NEURAL::", it.group.toString())
@@ -141,10 +131,9 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                     Log.d("TKUP-NEURAL::", "node ${node.nodeName}")
                     action.steps.firstOrNull { s -> !s.sended }?.let { snc ->
                         val shape = snc.shapes.random()
-                        sendMessage(
-                            node,
+                        sendBroadcastMessage(
                             NodeStepPeripheralMessageUnacked(
-                                shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier
+                                shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
                             )
                         )
                         snc.sended = true
@@ -153,10 +142,9 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
             }
             bulkMessaging(stepActions) { snc ->
                 val node = it.group.nodes[snc.nodeIndex]
-                sendMessage(
-                    node,
+                sendBroadcastMessage(
                     NodeControlMessageUnacked(
-                        ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier
+                        ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
                     )
                 )
             }
@@ -194,8 +182,8 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
 
     override fun finish() {
         Log.d("TKUP-NEURAL::", "Finish")
-        repository.getEventMessageLiveData().removeObserver(eventObserver)
-        repository.getEventMessageLiveData().removeObserver(deactivationObserver)
+        repository.getTrainingMessageCallback().removeObserver()
+        repository.getMeshMessageCallback().removeObserver()
         if (groupsnitialized()) {
             bulkMessaging(groups) { group ->
                 group.stopFallback()
@@ -204,36 +192,32 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                     autoOffLedMessage(
                         group.group,
                         NodeStepPeripheralMessageUnacked(
-                            ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_PERMANENT,
-                            appkey, model.modelId, model.companyIdentifier
+                            ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_FAST_FLASH,
+                            appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(group.group.ids)
                         )
                     )
                 }
             }
         }
         repository.isSending = false
-        started = false
         ended = 0
-        fisrtHitAddressDiscard = 0
         callback?.onCompleteTraining()
     }
 
     private fun deactivationMessage() {
-        repository.getEventMessageLiveData().observeForever(deactivationObserver)
+        repository.getTrainingMessageCallback().setObserver(this)
         waitingDeactivation = true
         bulkMessaging(trainingGroup) {
-            sendMessage(
-                it.group.group,
+            sendBroadcastMessage(
                 NodeStepPeripheralMessageUnacked(
                     ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_PERMANENT,
-                    appkey, model.modelId, model.companyIdentifier
+                    appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(it.group.group.ids)
                 )
             )
-            delay(50)
-            sendMessage(
-                it.group.group,
+            delay(DELTA_STEP_DELAY)
+            sendBroadcastMessage(
                 NodeControlMessageUnacked(
-                    ControlParams.START.toByte(), 60000, appkey, model.modelId, model.companyIdentifier
+                    ControlParams.START.toByte(), 60000, appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(it.group.group.ids)
                 )
             )
         }
@@ -241,10 +225,9 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
 
     private fun stopDeactivation() {
         bulkMessaging(trainingGroup) {
-            sendMessage(
-                it.group.group,
+            sendBroadcastMessage(
                 NodeControlMessageUnacked(
-                    ControlParams.STOP.toByte(), 0, appkey, model.modelId, model.companyIdentifier
+                    ControlParams.STOP.toByte(), 0, appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(it.group.group.ids)
                 )
             )
         }
@@ -252,9 +235,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
 
     override fun set(groups: List<Group>?, options: ScheduleOptions, callback: TrainingCallback) = executeService {
         this.options = options
-        repository.getEventMessageLiveData().removeObserver(eventObserver)
         if (options.randomFirstStep) Collections.rotate(this.options.steps, Random.nextInt(0, this.options.steps.size))
-        started = false
         ended = 0
         super.set(groups, callback) { generateSteps() }
     }
@@ -263,7 +244,9 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         repository.isSending = true
         when (options.starterMethod) {
             StarterMethod.INMEDIATELY -> start()
-            StarterMethod.COUNTDOWN -> countdown()
+            StarterMethod.COUNTDOWN -> {
+                callback?.onCountdown()
+                countdown()}
             StarterMethod.DEACTIVATION -> deactivationMessage()
         }
     }

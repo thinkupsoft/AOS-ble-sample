@@ -56,35 +56,14 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
     override fun addGroupNode(group: Group, meshNode: ProvisionedMeshNode?) {
         // subscription
         if (meshNode != null) {
-            val element: Element? = getElement(meshNode)
-            if (element != null) {
-                val elementAddress = element.elementAddress
-                val model: MeshModel? = getModel<VendorModel>(element)
-                if (model != null) {
-                    val modelIdentifier = model.modelId
-                    val configModelSubscriptionAdd: MeshMessage
-                    configModelSubscriptionAdd = ConfigModelSubscriptionAdd(elementAddress, group.address, modelIdentifier)
-                    sendMessage(meshNode, configModelSubscriptionAdd)
-                }
-            }
+            group.ids.add(meshNode.nodeName.toInt())
+            repository.getMeshManagerApi().updateGroupDb(group)
         }
     }
 
     override fun removeGroupNode(group: Group, meshNode: ProvisionedMeshNode) {
-        val address: Int = group.address
-        val element: Element? = getElement(meshNode)
-        if (element != null) {
-            val model: MeshModel? = getModel<VendorModel>(element)
-            if (model != null) {
-                var subscriptionDelete: MeshMessage? = null
-                if (MeshAddress.isValidGroupAddress(address)) {
-                    subscriptionDelete = ConfigModelSubscriptionDelete(element.elementAddress, address, model.modelId)
-                }
-                if (subscriptionDelete != null) {
-                    sendMessage(meshNode, subscriptionDelete)
-                }
-            }
-        }
+        group.ids.remove(meshNode.nodeName.toInt())
+        repository.getMeshManagerApi().updateGroupDb(group)
     }
 
     override fun identify(groups: List<Group>) {
@@ -119,7 +98,7 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                sendMessage(group, NodeControlMessageUnacked(params.toByte(), timeout, appKey, model.modelId, model.companyIdentifier))
+                sendBroadcastMessage(NodeControlMessageUnacked(params.toByte(), timeout, appKey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(group.ids)))
             }
         }
     }
@@ -133,10 +112,10 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                sendMessage(
-                    group, NodePrePeripheralMessageUnacked(
+                sendBroadcastMessage(
+                     NodePrePeripheralMessageUnacked(
                         dimmer = dimmer, gesture = gesture, distance = distance, sound = sound,
-                        appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                        appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier, destination = OpCodes.getGroupMask(group.ids)
                     )
                 )
             }
@@ -152,10 +131,10 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                sendMessage(
-                    group, NodeStepPeripheralMessageUnacked(
+                sendBroadcastMessage(
+                     NodeStepPeripheralMessageUnacked(
                         shape = shape, color = color, led = led,
-                        appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                        appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier, destination =  OpCodes.getGroupMask(group.ids)
                     )
                 )
             }
@@ -203,10 +182,10 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
         )
     }
 
-    private fun peripheralMessage(group: Group, message: NodeStepPeripheralMessageUnacked) {
-        Log.d("TKUP-NEURAL::IDY::", message.toString())
-        autoOffLedMessage(group, message)
-    }
+//    private fun peripheralMessage(group: Group, message: NodeStepPeripheralMessageUnacked) {
+//        Log.d("TKUP-NEURAL::IDY::", message.toString())
+//        autoOffLedMessage(group, message)
+//    }
 
     override fun configMessage(
         group: Group,

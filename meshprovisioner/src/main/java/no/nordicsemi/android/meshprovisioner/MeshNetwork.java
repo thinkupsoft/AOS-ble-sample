@@ -13,6 +13,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.room.Entity;
+
+import no.nordicsemi.android.meshprovisioner.models.VendorModel;
 import no.nordicsemi.android.meshprovisioner.transport.Element;
 import no.nordicsemi.android.meshprovisioner.transport.MeshModel;
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode;
@@ -560,13 +562,10 @@ public final class MeshNetwork extends BaseMeshNetwork {
                 for (Map.Entry<Integer, MeshModel> modelEntry : element.getMeshModels().entrySet()) {
                     final MeshModel model = modelEntry.getValue();
                     if (model != null) {
-                        final List<Integer> subscriptionAddresses = model.getSubscribedAddresses();
-                        for (Integer subscriptionAddress : subscriptionAddresses) {
-                            if (group.getAddress() == subscriptionAddress) {
-                                if (!nodesGroup.contains(node))
+                        if (group.getIds().contains(Integer.parseInt(node.getNodeName()))) {
+                            if (!nodesGroup.contains(node))
                                     nodesGroup.add(node);
                             }
-                        }
                     }
                 }
             }
@@ -587,13 +586,11 @@ public final class MeshNetwork extends BaseMeshNetwork {
                 for (Map.Entry<Integer, MeshModel> modelEntry : element.getMeshModels().entrySet()) {
                     final MeshModel model = modelEntry.getValue();
                     if (model != null) {
-                        final List<Integer> subscriptionAddresses = model.getSubscribedAddresses();
-                        for (Integer subscriptionAddress : subscriptionAddresses) {
-                            if (group.getAddress() == subscriptionAddress) {
-                                if (!models.contains(model))
+                            if (group.getIds().contains(Integer.parseInt(node.getNodeName()))) {
+                                if (!models.contains(model) && (model.getClass() == VendorModel.class))
                                     models.add(model);
                             }
-                        }
+
                     }
                 }
             }

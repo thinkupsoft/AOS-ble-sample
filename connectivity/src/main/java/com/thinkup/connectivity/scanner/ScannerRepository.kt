@@ -41,7 +41,6 @@ class ScannerRepository(
                         updateScannerLiveData(result)
                     }
                 } else if (filterUuid == Constants.MESH_PROXY_UUID) {
-//                    scannerLiveData.removeDeviceIfExists(result) //Remove the provisioned node from devices in ScannerLiveData
                     val serviceData = Utils.getServiceData(result, Constants.MESH_PROXY_UUID)
                     if (meshManagerApi.isAdvertisingWithNetworkIdentity(serviceData)) {
                         if (meshManagerApi.networkIdMatches(networkId!!, serviceData)) {

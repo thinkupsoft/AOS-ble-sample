@@ -14,6 +14,9 @@ class TrainingGroup(
     var currentStep: Int
 ) {
 
+    companion object {
+        const val MISSED_STEP_TIMEOUT = 100L
+    }
     val handler = Handler()
     var runnable: Runnable? = null
 
@@ -28,7 +31,7 @@ class TrainingGroup(
             lastReceivedStep++
             action.invoke()
         }
-        handler.postDelayed(runnable!!, timeout + 1000L)
+        handler.postDelayed(runnable!!, timeout + MISSED_STEP_TIMEOUT)
     }
 
     fun isFromThis(srcAddress: Int): Boolean {

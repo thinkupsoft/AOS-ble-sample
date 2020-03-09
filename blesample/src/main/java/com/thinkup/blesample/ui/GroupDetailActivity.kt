@@ -12,6 +12,7 @@ import com.thinkup.blesample.renderers.EventRenderer
 import com.thinkup.connectivity.BleGroup
 import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.event.NodeEventStatus
+import com.thinkup.connectivity.utils.EventObserver
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_group_detail.*
 import kotlinx.android.synthetic.main.activity_group_detail.color
@@ -137,10 +138,14 @@ class GroupDetailActivity : BaseActivity() {
     }
 
     private fun startEvent() {
-        bleGroup.getEvents().observe(this, Observer {
-            it?.let {
-                list.add(it)
-                adapter.setItems(list)
+        bleGroup.getEvents().setObserver(object : EventObserver.Callback<NodeEventStatus?> {
+            override fun onPost(e: NodeEventStatus?) {
+                runOnUiThread {
+                    e?.let {
+                        list.add(e)
+                        adapter.setItems(list)
+                    }
+                }
             }
         })
     }

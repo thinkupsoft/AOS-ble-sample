@@ -7,6 +7,8 @@ import android.os.Parcelable;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import androidx.annotation.NonNull;
@@ -68,6 +70,11 @@ public class Group implements Parcelable {
     @SerializedName("meshUuid")
     private String meshUuid;
 
+    @ColumnInfo(name = "ids")
+    @Expose
+    @SerializedName("ids")
+    private List<Integer> ids = new ArrayList<>();
+
     /**
      * Constructs a mesh group to be used for room db implementation
      *
@@ -86,6 +93,7 @@ public class Group implements Parcelable {
                  @NonNull final String meshUuid) throws IllegalArgumentException {
         this(address, addressLabel, parentAddress, parentAddressLabel, meshUuid);
         this.id = id;
+        this.ids = new ArrayList<Integer>();
     }
 
     /**
@@ -358,6 +366,19 @@ public class Group implements Parcelable {
         this.name = name;
     }
 
+    /**
+     * Returns the ids of node of the group of a mesh network
+     */
+    public List<Integer> getIds() {
+        return ids;
+    }
+
+    /**
+     * Sets a list of ids of nodes that belongs to the  mesh group
+     */
+    public void setIds(@NonNull final List<Integer> ids) {
+        this.ids = ids;
+    }
 
     @NonNull
     @Override

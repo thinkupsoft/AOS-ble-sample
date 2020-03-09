@@ -10,6 +10,7 @@ import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.mesh.NodeCallback
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.ColorParams
+import com.thinkup.connectivity.messges.OpCodes
 import com.thinkup.connectivity.messges.PeripheralParams
 import com.thinkup.connectivity.messges.ShapeParams
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
@@ -186,6 +187,47 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         }
     }
 
+    override fun showBatteryPercentage(node: ProvisionedMeshNode) {
+        val color = getColorOfBattery(node.batteryLevel)
+        val shape = getShapeOfId(node.nodeName.toInt())
+        val element: Element? = getElement(node)
+        if (element != null) {
+            val model = getModel<VendorModel>(element)
+            if (model != null) {
+                val appKey = getAppKey(model.boundAppKeyIndexes[0])
+                appKey?.let {
+                    val msg = NodeStepPeripheralMessageUnacked(
+                        shape, color, PeripheralParams.LED_PERMANENT, appKey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt()))
+                    peripheralMessage(node, msg)
+                }
+            }
+        }
+    }
+
+    private fun getColorOfBattery(batteryLevel: Int): Int {
+        return when {
+            batteryLevel <= 15 -> ColorParams.COLOR_RED
+            batteryLevel <= 45 -> ColorParams.COLOR_YELLOW
+            else -> ColorParams.COLOR_GREEN
+        }
+    }
+
+    private fun getShapeOfId(id: Int): Int {
+        return when (id) {
+            1 -> ShapeParams.NUMBER_1
+            2 -> ShapeParams.NUMBER_2
+            3 -> ShapeParams.NUMBER_3
+            4 -> ShapeParams.NUMBER_4
+            5 -> ShapeParams.NUMBER_5
+            6 -> ShapeParams.NUMBER_6
+            7 -> ShapeParams.NUMBER_7
+            8 -> ShapeParams.NUMBER_8
+            9 -> ShapeParams.NUMBER_9
+            else -> ShapeParams.NUMBER_0
+        }
+
+    }
+
     private fun identifyMessage(
         node: ProvisionedMeshNode,
         appKey: ApplicationKey,
@@ -193,7 +235,7 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         companyIdentifier: Int
     ): NodeStepPeripheralMessageUnacked {
         var shape = ShapeParams.NUMBER_0
-        var color = ColorParams.COLOR_GREEN
+        val color = ColorParams.COLOR_GREEN
         when {
             node.nodeName.endsWith(NUMBER_0) -> shape = ShapeParams.NUMBER_0
             node.nodeName.endsWith(NUMBER_1) -> shape = ShapeParams.NUMBER_1
@@ -207,7 +249,7 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
             node.nodeName.endsWith(NUMBER_9) -> shape = ShapeParams.NUMBER_9
         }
         return NodeStepPeripheralMessageUnacked(
-            shape, color, PeripheralParams.LED_PERMANENT, appKey, modelId, companyIdentifier
+            shape, color, PeripheralParams.LED_PERMANENT, appKey, modelId, companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
         )
     }
 
@@ -215,4 +257,5 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         Log.d("TKUP-NEURAL::IDY::", message.toString())
         autoOffLedMessage(node, message)
     }
+
 }

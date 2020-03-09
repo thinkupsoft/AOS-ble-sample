@@ -18,6 +18,7 @@ import no.nordicsemi.android.meshprovisioner.models.VendorModel
 abstract class BleBaseTraining(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BaseBleImpl(context, setting, repository) {
 
     protected var callback: TrainingCallback? = null
+    protected val allNodeIds = mutableSetOf<Int>()
     protected lateinit var appkey: ApplicationKey
     protected lateinit var model: VendorModel
     protected lateinit var groups: List<TrainingGroup>
@@ -43,29 +44,27 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
     }
 
     /**
-     * Before start a fast training set the common an in-mutable options to the groups
+     * Before start a training set the common an in-mutable options to the groups
      * timeout (light time), sound, led
      */
     private fun starterConfig() {
         bulkMessaging(groups) { group ->
             val dimmer = when (getDimmerValue()) {
-                0 -> 0X05
-                1 -> 0X32
-                else -> 0X64
+                0 -> DimmerParams.LOW
+                1 -> DimmerParams.MEDIUM
+                else -> DimmerParams.HIGH
             }
             val distance = when (getDistanceValue()) {
                 0 -> PeripheralParams.LOW
                 1 -> PeripheralParams.MIDDLE
                 else -> PeripheralParams.HIGH
             }
-            sendMessage(
-                group.group,
+            sendBroadcastMessage(
                 NodePrePeripheralMessageUnacked(
                     dimmer, PeripheralParams.BOTH, distance,
                     if (getSoundValue()) PeripheralParams.BIP_START else PeripheralParams.NO_SOUND,
-                    appkey, model.modelId, model.companyIdentifier
-                ),
-                true
+                    appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(allNodeIds.toList())
+                ), true
             )
         }
     }
@@ -73,10 +72,14 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
     protected fun set(groups: List<Group>?, callback: TrainingCallback, action: (() -> Unit)? = null) = executeService {
         this.groups = groups?.map {
             val nodes = getGroupNodes(it)
-            TrainingGroup(it.address, it, nodes, nodes.map { n -> n.nodeName.toInt() }, 0, 0)
+            val ids = nodes.map { n -> n.nodeName.toInt() }
+            allNodeIds.addAll(ids)
+            TrainingGroup(it.address, it, nodes, ids, 0, 0)
         } ?: getGroups().value!!.map {
             val nodes = getGroupNodes(it)
-            TrainingGroup(it.address, it, nodes, nodes.map { n -> n.nodeName.toInt() }, 0, 0)
+            val ids = nodes.map { n -> n.nodeName.toInt() }
+            allNodeIds.addAll(ids)
+            TrainingGroup(it.address, it, nodes, ids, 0, 0)
         }
         this.callback = callback
         repository.isSending = true
@@ -92,26 +95,24 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
 
     protected suspend fun countdown() {
         for (i in 1..3) {
-            bulkMessaging(groups) { group ->
-                sendMessage(
-                    group.group,
-                    NodeStepPeripheralMessageUnacked(
-                        ShapeParams.CIRCLE, getCountdownColor(i), PeripheralParams.LED_PERMANENT,
-                        appkey, model.modelId, model.companyIdentifier
+            sendBroadcastMessage(
+                NodeStepPeripheralMessageUnacked(
+                    ShapeParams.CIRCLE, getCountdownColor(i), PeripheralParams.LED_PERMANENT,
+                    appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(allNodeIds.toList())
+                ), true
+            )
+            if (i == 1) {
+                // despues de circulo verde de countdown
+                delay(REPLICATE_DELAY)
+                sendBroadcastMessage(
+                    NodeControlMessageUnacked(
+                        ControlParams.SET_LED_ON.toByte(), NO_CONFIG, appkey,
+                        model.modelId, model.companyIdentifier, OpCodes.getGroupMask(allNodeIds.toList())
                     ), true
                 )
-                if (i == 1) {
-                    // despues de circulo verde de countdown
-                    delay(20)
-                    sendMessage(
-                        group.group,
-                        NodeControlMessageUnacked(ControlParams.SET_LED_ON.toByte(), NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
-                        true
-                    )
-                }
             }
             // entre cada circulo de countdown
-            delay(1000)
+            delay(1000 - if (i == 1) REPLICATE_DELAY else 0)
         }
         start()
     }

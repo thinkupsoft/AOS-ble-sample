@@ -146,8 +146,6 @@ abstract class LowerTransportLayer extends UpperTransportLayer {
     public final void createLowerTransportAccessPDU(@NonNull final AccessMessage message) {
         final byte[] upperTransportPDU = message.getUpperTransportPdu();
         final SparseArray<byte[]> lowerTransportAccessPduMap;
-        Log.v("TKUP-NEURAL::", "Creating Message: " + message.getOpCode() + ":" + upperTransportPDU.length);
-        Log.v("TKUP-NEURAL::", Arrays.toString(upperTransportPDU));
         if (upperTransportPDU.length <= MAX_SEGMENTED_ACCESS_PAYLOAD_LENGTH) {
             message.setSegmented(false);
             final byte[] lowerTransportPDU = createUnsegmentedAccessMessage(message);

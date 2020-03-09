@@ -20,6 +20,7 @@ import androidx.annotation.RestrictTo;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
+import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import no.nordicsemi.android.meshprovisioner.data.ApplicationKeyDao;
@@ -50,6 +51,8 @@ import no.nordicsemi.android.meshprovisioner.utils.MeshParserUtils;
         Group.class,
         Scene.class},
         version = 7)
+@TypeConverters({MeshDataConverter.class})
+
 abstract class MeshNetworkDb extends RoomDatabase {
 
     private static String TAG = MeshNetworkDb.class.getSimpleName();

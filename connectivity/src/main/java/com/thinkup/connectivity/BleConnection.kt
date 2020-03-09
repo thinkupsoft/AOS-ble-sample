@@ -2,6 +2,7 @@ package com.thinkup.connectivity
 
 import androidx.lifecycle.LiveData
 import com.thinkup.connectivity.messges.event.NodeEventStatus
+import com.thinkup.connectivity.utils.EventObserver
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
@@ -23,9 +24,9 @@ interface BleConnection {
 
     fun getGroupNodes(group: Group): List<ProvisionedMeshNode>
 
-    fun getMessages(): LiveData<MeshMessage?>
+    fun getMessages(): EventObserver<MeshMessage?>
 
-    fun getEvents(): LiveData<NodeEventStatus?>
+    fun getEvents(): EventObserver<NodeEventStatus?>
 
     fun autoConnect(onConnect: (() -> Unit)? = null)
 
@@ -34,9 +35,9 @@ interface BleConnection {
     fun forceDelete(unicastAddress: Int)
 
     // nodes
-    fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage, isProvisioning: Boolean = false)
+    fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage, isBlocking: Boolean = false)
 
     // groups
-    fun sendMessage(group: Group, message: MeshMessage, isProvisioning: Boolean = false)
+    fun sendMessage(group: Group, message: MeshMessage, isBlocking: Boolean = false)
 
 }

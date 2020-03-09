@@ -8,6 +8,7 @@ interface BleNode : BleConnection {
     fun delete(node: ProvisionedMeshNode): LiveData<Boolean>
     fun deleteDB(node: ProvisionedMeshNode)
     fun identify(node: ProvisionedMeshNode)
+    fun showBatteryPercentage(node: ProvisionedMeshNode)
     fun identify(nodes: List<ProvisionedMeshNode>)
     fun getStatus(node: ProvisionedMeshNode)
     fun controlMessage(node: ProvisionedMeshNode, params: Int, timeout: Int = NO_CONFIG, ack: Boolean = true)

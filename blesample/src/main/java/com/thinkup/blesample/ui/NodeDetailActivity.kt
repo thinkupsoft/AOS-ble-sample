@@ -16,9 +16,11 @@ import com.thinkup.connectivity.messges.control.NodeControlMessageStatus
 import com.thinkup.connectivity.messges.event.NodeEventStatus
 import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
 import com.thinkup.connectivity.messges.status.NodeGetMessageStatus
+import com.thinkup.connectivity.utils.EventObserver
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_node_detail.*
 import kotlinx.android.synthetic.main.toolbar.*
+import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
 
@@ -94,19 +96,23 @@ class NodeDetailActivity : BaseActivity() {
     }
 
     private fun messages() {
-        bleNode.getMessages().observe(this, Observer {
-            when {
-                it is NodeControlMessageStatus -> {
-                    controlResponse.text = it.toString()
-                }
-                it is NodeConfigMessageStatus -> {
-                    configResponse.text = it.toString()
-                }
-                it is NodePeripheralMessageStatus -> {
-                    periferalResponse.text = it.toString()
-                }
-                it is NodeGetMessageStatus -> {
-                    statusResponse.text = "RESPONSE: $it"
+        bleNode.getMessages().setObserver(object : EventObserver.Callback<MeshMessage?> {
+            override fun onPost(e: MeshMessage?) {
+                runOnUiThread {
+                    when (e) {
+                        is NodeControlMessageStatus -> {
+                            controlResponse.text = e.toString()
+                        }
+                        is NodeConfigMessageStatus -> {
+                            configResponse.text = e.toString()
+                        }
+                        is NodePeripheralMessageStatus -> {
+                            periferalResponse.text = e.toString()
+                        }
+                        is NodeGetMessageStatus -> {
+                            statusResponse.text = "RESPONSE: $e"
+                        }
+                    }
                 }
             }
         })
@@ -138,10 +144,15 @@ class NodeDetailActivity : BaseActivity() {
     }
 
     private fun startEvent() {
-        bleNode.getEvents().observe(this, Observer {
-            it?.let {
-                list.add(it)
-                adapter.setItems(list)
+        bleNode.getEvents().setObserver(object : EventObserver.Callback<NodeEventStatus?> {
+            override fun onPost(e: NodeEventStatus?) {
+                runOnUiThread {
+                    e?.let {
+                        list.add(e)
+                        adapter.setItems(list)
+                    }
+
+                }
             }
         })
     }

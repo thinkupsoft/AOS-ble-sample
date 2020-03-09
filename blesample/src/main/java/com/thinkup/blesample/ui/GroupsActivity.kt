@@ -2,6 +2,8 @@ package com.thinkup.blesample.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AlertDialog
@@ -11,13 +13,16 @@ import com.thinkup.blesample.R
 import com.thinkup.blesample.renderers.DividerHelper
 import com.thinkup.blesample.renderers.GroupRenderer
 import com.thinkup.connectivity.BleGroup
+import com.thinkup.connectivity.utils.EventObserver
 import com.thinkup.easylist.RendererAdapter
 import kotlinx.android.synthetic.main.activity_groups.*
 import kotlinx.android.synthetic.main.toolbar.*
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.ConfigModelSubscriptionStatus
+import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
+import java.util.concurrent.ThreadPoolExecutor
 
 class GroupsActivity : BaseActivity(), GroupRenderer.Callback {
 
@@ -31,7 +36,7 @@ class GroupsActivity : BaseActivity(), GroupRenderer.Callback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_groups)
         addGroup.setOnClickListener {
-            viewModel.addGroup("Grupo $char")
+            Thread { viewModel.addGroup("Grupo $char") }.start()
         }
         updateMessage()
 
@@ -55,20 +60,24 @@ class GroupsActivity : BaseActivity(), GroupRenderer.Callback {
     }
 
     override fun onDelete(item: Group) {
-        viewModel.removeGroup(item)
+        Thread { viewModel.removeGroup(item) }.start()
     }
 
     private fun updateMessage() {
-        viewModel.getMessages().observe(this, Observer {
-            it?.let {
-                if (it is ConfigModelSubscriptionStatus) {
-                    val status = it
-                    if (status.isSuccessful)
-                        AlertDialog.Builder(this)
-                            .setMessage("Operation success")
-                            .setOnCancelListener { finish() }
-                            .setPositiveButton("Ok") { p0, p1 -> }
-                            .show()
+        viewModel.getMessages().setObserver(object : EventObserver.Callback<MeshMessage?> {
+            override fun onPost(e: MeshMessage?) {
+                runOnUiThread {
+                    e?.let {
+                        if (it is ConfigModelSubscriptionStatus) {
+                            val status = it
+                            if (status.isSuccessful)
+                                AlertDialog.Builder(this@GroupsActivity)
+                                    .setMessage("Operation success")
+                                    .setOnCancelListener { finish() }
+                                    .setPositiveButton("Ok") { p0, p1 -> }
+                                    .show()
+                        }
+                    }
                 }
             }
         })

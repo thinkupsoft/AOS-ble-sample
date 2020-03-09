@@ -15,7 +15,6 @@ import com.thinkup.connectivity.messges.peripheral.*
 import com.thinkup.connectivity.utils.EventObserver
 import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.Group
-import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BleBaseTraining(context, setting, repository),
     BleFastTraining, EventObserver.Callback<NodeEventStatus?> {
@@ -26,14 +25,16 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     override fun getDistanceValue(): Int = options.distance
     override fun getSoundValue(): Boolean = options.sound
 
+    @Synchronized
     override fun onPost(eventStatus: NodeEventStatus?) {
         var ended = 0
+        Log.d("TKUP::", eventStatus.toString())
         if (eventStatus != null) {
             if (eventStatus.eventType == EventType.HIT || eventStatus.eventType == EventType.TIMEOUT) {
                 groups.forEach { group ->
                     if (group.isFromThis(eventStatus.srcAddress) && group.currentStep > group.lastReceivedStep) {
+                        Log.d("TKUP::", "Group = ${group.address}")
                         group.lastReceivedStep++
-                        group.stopFallback()
                         stepG(group)
                         callback?.onAction(
                             group.group,
@@ -52,7 +53,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
 
     override fun set(groups: List<Group>?, options: FastOptions, callback: TrainingCallback) = executeService {
         this.options = options
-        repository.getTrainingMessageLiveData().setObserver(this)
+        repository.getTrainingMessageCallback().setObserver(this)
         super.set(groups, callback, null)
     }
 
@@ -79,18 +80,51 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         )
         callback?.onStartTraining()
         // delay after countdown, before first step
-        delay(options.delay.toLong())
-        bulkMessaging(groups) { group ->
-            stepG(group)
-        }
+        delay(DELTA_STEP_DELAY)
+        firstStep(groups)
     }
 
+    @Synchronized
+    private fun firstStep(groups: List<TrainingGroup>) = executeService {
+        val ids = mutableListOf<Int>()
+        var shape = 0
+        var color = 0
+        groups.forEach { group ->
+            group.currentStep++
+            ids.add(group.nodeIds.random())
+            color = options.colors.random()
+            shape = options.shapes.random()
+        }
+        sendBroadcastMessage(
+            NodeStepPeripheralMessageUnacked(
+                shape, color, options.flashMode,
+                appkey, model.modelId, model.companyIdentifier,
+                OpCodes.getGroupMask(ids)
+            ), true
+        )
+        // delay between train and start
+        delay(options.delay.toLong() - DELTA_STEP_DELAY)
+
+        val messsage = NodeControlMessageUnacked(
+            ControlParams.START.toByte(), options.timeout, appkey, model.modelId,
+            model.companyIdentifier, OpCodes.getGroupMask(ids)
+        )
+
+        // Replicate same message, because is unack
+        sendBroadcastMessage(messsage, true)
+        delay(REPLICATE_DELAY)
+        sendBroadcastMessage(messsage, true)
+    }
+
+    @Synchronized
     private fun stepG(group: TrainingGroup) = executeService {
+        Log.d("TKUP::", "CSteps=${group.currentStep} - TSteps=${options.touches}")
         if (group.currentStep < options.touches) {
             group.currentStep++
             val node = group.nodeIds.random()
             val color = options.colors.random()
             val shape = options.shapes.random()
+            Log.d("TKUP::", "Node=${node} - Color=${color} - Shape=${shape}")
             sendBroadcastMessage(
                 NodeStepPeripheralMessageUnacked(
                     shape, color, options.flashMode,
@@ -99,43 +133,32 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                 ), true
             )
             // delay between train and start
-            delay(options.delay.toLong() - 100)
-            sendBroadcastMessage(
-                NodeControlMessageUnacked(
-                    ControlParams.START.toByte(), options.timeout, appkey, model.modelId,
-                    model.companyIdentifier, OpCodes.getUnicastMask(node)
-                )
+            delay(options.delay.toLong() - DELTA_STEP_DELAY)
+            val messsage = NodeControlMessageUnacked(
+                ControlParams.START.toByte(), options.timeout, appkey, model.modelId,
+                model.companyIdentifier, OpCodes.getUnicastMask(node)
             )
-            scheduledFallback(group, node)
-        }
-    }
-
-    private fun scheduledFallback(group: TrainingGroup, node: Int) {
-        group.missedStepFallback(options.timeout) {
-            stepG(group)
-            callback?.onAction(
-                group.group, group.nodes.find { it.nodeName == node.toString() }, NodeEventStatus(EventType.TIMEOUT, options.timeout),
-                EventType.TIMEOUT, options.timeout.toLong()
-            )
+            // Replicate same message, because is unack
+            sendBroadcastMessage(messsage, true)
+            delay(REPLICATE_DELAY)
+            sendBroadcastMessage(messsage, true)
         }
     }
 
     override fun finish() {
-        repository.getTrainingMessageLiveData().removeObserver()
+        repository.getTrainingMessageCallback().removeObserver()
         if (groupsnitialized()) {
-            bulkMessaging(groups) { group ->
+            groups.forEach { group ->
                 group.stopFallback()
-                // delay before end light
-                delay(REPLICATE_DELAY)
-                if (options.endWithLight) {
-                    autoOffLedMessage(
-                        group.group,
-                        NodeStepPeripheralMessageUnacked(
-                            ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_PERMANENT,
-                            appkey, model.modelId, model.companyIdentifier
-                        )
-                    )
-                }
+            }
+            if (options.endWithLight) {
+                sendBroadcastMessage(
+                    NodeStepPeripheralMessageUnacked(
+                        ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_FAST_FLASH,
+                        appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(allNodeIds.toList())
+                    ), true
+                )
+                autoOffLedMessage(allNodeIds.toList(), appkey, model.modelId, model.companyIdentifier)
             }
         }
         repository.isSending = false

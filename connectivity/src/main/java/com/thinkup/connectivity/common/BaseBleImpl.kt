@@ -8,7 +8,6 @@ import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.messges.BROADCAST
 import com.thinkup.connectivity.messges.ControlParams
-import com.thinkup.connectivity.messges.DYNAMIC_MASK
 import com.thinkup.connectivity.messges.OpCodes
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.utils.TimeoutLiveData
@@ -25,11 +24,11 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     protected val ACTION_TIMEOUT = 3 * 1000L // 3 sec
     protected val STEP_TIMEOUT = 2 * 1000L // 2 sec
     protected val PROVISION_TIMEOUT = 60 * 1000L // 30 sec - Timeout to provision step
-    protected val KEEP_ALIVE = 30 * 1000L // 40  sec - Time to send keep alive message
-    protected val KEEP_ALIVE_RETRY = 5 * 1000L // 5  sec - Time to send keep alive message when is sending another command
+    protected val KEEP_ALIVE = 10 * 1000L // 15  sec - Time to send keep alive message
     protected val KEEP_ALIVE_WAIT = 3 * 1000L // 3  sec - Time to recollect keep alive responses
     protected val BULK_DELAY = 20L
     protected val REPLICATE_DELAY = 20L
+    protected val DELTA_STEP_DELAY = 75L
     protected val AUTO_OFF_LEDS = 2500L // Auto-off leds after the info has been shown
 
     override fun settings(): BleSetting = setting
@@ -51,8 +50,12 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     }
 
     override fun getGroupNodes(group: Group): List<ProvisionedMeshNode> {
-        val network = repository.getMeshNetworkLiveData().getMeshNetwork()
-        return network?.getNodes(group) ?: listOf()
+        val listNodes = mutableListOf<ProvisionedMeshNode>()
+        getProvisionedNodes().value?.forEach {
+             if (!listNodes.contains(it) && group.ids.contains(it.nodeName.toInt()))
+                 listNodes.add(it)
+         }
+        return listNodes
     }
 
     override fun disconnect() {
@@ -67,25 +70,25 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
 
     protected fun getAppKey(index: Int) = repository.getMeshNetworkLiveData().getMeshNetwork()?.getAppKey(index)
 
-    override fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage, isProvisioning: Boolean) =
-        sendMessage(node.unicastAddress, message, isProvisioning)
+    override fun sendMessage(node: ProvisionedMeshNode, message: MeshMessage, isBlocking: Boolean) =
+        sendMessage(node.unicastAddress, message, isBlocking)
 
-    override fun sendMessage(group: Group, message: MeshMessage, isProvisioning: Boolean) = sendMessage(group.address, message, isProvisioning)
+    override fun sendMessage(group: Group, message: MeshMessage, isBlocking: Boolean) = sendMessage(group.address, message, isBlocking)
 
-    protected fun sendReplicateMessage(group: Group, message: MeshMessage, isProvisioning: Boolean) {
-        sendMessage(group.address, message, isProvisioning)
-        Handler().postDelayed({ sendMessage(group.address, message, isProvisioning) }, REPLICATE_DELAY)
+    protected fun sendReplicateMessage(group: Group, message: MeshMessage, isBlocking: Boolean) {
+        sendMessage(group.address, message, isBlocking)
+        Handler().postDelayed({ sendMessage(group.address, message, isBlocking) }, REPLICATE_DELAY)
     }
 
-    protected fun sendBroadcastMessage(message: MeshMessage, isProvisioning: Boolean = false) {
-        sendMessage(BROADCAST, message, isProvisioning)
+    protected fun sendBroadcastMessage(message: MeshMessage, isBlocking: Boolean = false) {
+        sendMessage(BROADCAST, message, isBlocking)
     }
 
-    private fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
+    private fun sendMessage(unicastAddress: Int, message: MeshMessage, isBlocking: Boolean = false) {
         try {
-            if (!checkConnectivity()) autoConnect { sendMessage(unicastAddress, message, isProvisioning) }
+            if (!checkConnectivity()) autoConnect { sendMessage(unicastAddress, message, isBlocking) }
             else {
-                repository.sendMessage(unicastAddress, message, isProvisioning)
+                repository.sendMessage(unicastAddress, message, isBlocking)
             }
         } catch (ex: IllegalArgumentException) {
             ex.printStackTrace()
@@ -94,9 +97,9 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
         }
     }
 
-    override fun getMessages() = repository.getMeshMessageLiveData()
+    override fun getMessages() = repository.getMeshMessageCallback()
 
-    override fun getEvents() = repository.getEventMessageLiveData()
+    override fun getEvents() = repository.getTrainingMessageCallback()
 
     override fun checkConnectivity(): Boolean {
         return repository.isConnectedToProxy().value ?: false
@@ -147,7 +150,7 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
             if (model != null) {
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
-                    autoOffLedMessage(node.unicastAddress, message, appKey, model.modelId, model.companyIdentifier, timeout)
+                    autoOffLedMessageBroadcast(node.nodeName.toInt(), message, appKey, model.modelId, model.companyIdentifier, timeout)
                 }
             }
         }
@@ -160,7 +163,8 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
             val model = models[0] as VendorModel
             val appKey = getAppKey(model.boundAppKeyIndexes[0])
             appKey?.let {
-                autoOffLedMessage(group.address, message, appKey, model.modelId, model.companyIdentifier, timeout)
+                sendBroadcastMessage(message)
+                autoOffLedMessage(group.ids, appKey, model.modelId, model.companyIdentifier, timeout)
             }
         }
     }
@@ -193,10 +197,67 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
     ) {
         executeService {
             delay(REPLICATE_DELAY)
-            sendBroadcastMessage(NodeControlMessageUnacked(ControlParams.SET_LED_ON.toByte(), 0, appkey, modelId, companyId, OpCodes.getGroupMask(ids)))
+            sendBroadcastMessage(
+                NodeControlMessageUnacked(
+                    ControlParams.SET_LED_ON.toByte(),
+                    0,
+                    appkey,
+                    modelId,
+                    companyId,
+                    OpCodes.getGroupMask(ids)
+                )
+            )
             TimeoutLiveData<Any?>(timeout, null)
             {
-                sendBroadcastMessage(NodeControlMessageUnacked(ControlParams.SET_LED_OFF.toByte(), 0, appkey, modelId, companyId, OpCodes.getGroupMask(ids)))
+                sendBroadcastMessage(
+                    NodeControlMessageUnacked(
+                        ControlParams.SET_LED_OFF.toByte(),
+                        0,
+                        appkey,
+                        modelId,
+                        companyId,
+                        OpCodes.getGroupMask(ids)
+                    )
+                )
+            }
+        }
+    }
+
+    private fun autoOffLedMessageBroadcast(
+        id: Int,
+        message: MeshMessage,
+        appkey: ApplicationKey,
+        modelId: Int,
+        companyId: Int,
+        timeout: Long = AUTO_OFF_LEDS
+    ) {
+        executeService {
+            sendBroadcastMessage(message)
+            delay(REPLICATE_DELAY)
+
+            sendBroadcastMessage(
+                NodeControlMessageUnacked(
+                    ControlParams.SET_LED_ON.toByte(),
+                    0,
+                    appkey,
+                    modelId,
+                    companyId,
+                    OpCodes.getUnicastMask(id)
+                )
+            )
+
+            TimeoutLiveData<Any?>(timeout, null)
+            {
+                sendBroadcastMessage(
+                    NodeControlMessageUnacked(
+                        ControlParams.SET_LED_OFF.toByte(),
+                        0,
+                        appkey,
+                        modelId,
+                        companyId,
+                        OpCodes.getUnicastMask(id)
+                    )
+                )
             }
         }
     }

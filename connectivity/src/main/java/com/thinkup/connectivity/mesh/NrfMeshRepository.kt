@@ -39,7 +39,7 @@ class NrfMeshRepository(
     MeshStatusCallbacks,
     MeshManagerCallbacks,
     BleMeshManagerCallbacks,
-    RepositoryLoaderGroupsCallback{
+    RepositoryLoaderGroupsCallback {
 
 
     private val TAG = NrfMeshRepository::class.java.simpleName
@@ -97,12 +97,13 @@ class NrfMeshRepository(
     //Contains the MeshNetwork
     private val meshNetworkLiveData: MeshNetworkLiveData = MeshNetworkLiveData()
     private val networkImportState: SingleLiveEvent<String?> = SingleLiveEvent()
-    private val meshMessageLiveData: MutableLiveData<MeshMessage?> = SingleLiveEvent()
-    private val keepMessageLiveData: MutableLiveData<NodeControlMessageStatus?> = SingleLiveEvent()
-    private val eventMessageLiveData: MutableLiveData<NodeEventStatus?> = MutableLiveData()
+
+    // Messages callbacks
+    private val helloCallback: EventObserver<NodeEventStatus?> = EventObserver()
+    private val meshMessageCallback: EventObserver<MeshMessage?> = EventObserver()
+    private val keepMessageCallback: EventObserver<NodeControlMessageStatus?> = EventObserver()
     private val trainingMessageCallback: EventObserver<NodeEventStatus?> = EventObserver()
-    // Comparator to delete duplicated events
-    private val eventComparator: ComparableEvent<NodeEventStatus> = ComparableEvent()
+
     // Contains the provisioned nodes
     private val provisionedNodes = MutableLiveData<List<ProvisionedMeshNode>>()
     private val groups = MutableLiveData<List<Group>>()
@@ -187,41 +188,15 @@ class NrfMeshRepository(
     }
 
     /**
-     * Returns the [MeshMessageLiveData] live data object containing the mesh message
+     * Returns the [Messages & Events Callbacks] live data object containing the mesh message
      */
-    fun getMeshMessageLiveData(): LiveData<MeshMessage?> {
-        return meshMessageLiveData
-    }
+    fun getHelloCallback(): EventObserver<NodeEventStatus?> = helloCallback
 
-    /**
-     * Returns the [MeshMessageLiveData] live data object containing the mesh message
-     */
-    fun getKeepMessageLiveData(): LiveData<NodeControlMessageStatus?> {
-        return keepMessageLiveData
-    }
+    fun getMeshMessageCallback(): EventObserver<MeshMessage?> = meshMessageCallback
 
-    fun flushKeepMessageLiveData() {
-        keepMessageLiveData.postValue(null)
-    }
+    fun getKeepMessageCallback(): EventObserver<NodeControlMessageStatus?> = keepMessageCallback
 
-    /**
-     * Returns the [EventMessageLiveData] live data object containing the mesh message
-     */
-    fun getEventMessageLiveData(): LiveData<NodeEventStatus?> {
-        return eventMessageLiveData
-    }
-
-    fun flushEventMessageLiveData() {
-        eventMessageLiveData.postValue(NodeEventStatus(EventType.FAKE))
-        eventComparator.flush()
-    }
-
-    /**
-     * Returns the [EventMessageLiveData] live data object containing the mesh message
-     */
-    fun getTrainingMessageLiveData(): EventObserver<NodeEventStatus?> {
-        return trainingMessageCallback
-    }
+    fun getTrainingMessageCallback(): EventObserver<NodeEventStatus?> = trainingMessageCallback
 
     fun getSelectedGroup(): LiveData<Group>? {
         return selectedGroupLiveData
@@ -429,7 +404,7 @@ class NrfMeshRepository(
 
     fun getBatteryAverage(): LiveData<Int?> = batteryAverage
 
-    override fun onGroupsLoaded( groupsList: List<Group>) {
+    override fun onGroupsLoaded(groupsList: List<Group>) {
         groups.postValue(groupsList)
     }
 
@@ -450,7 +425,7 @@ class NrfMeshRepository(
 
     override fun onDeviceConnected(device: BluetoothDevice) {
         isConnected.postValue(true)
-        isConnectedToProxy.postValue(true)
+        //isConnectedToProxy.postValue(true)
     }
 
     override fun onDeviceDisconnecting(device: BluetoothDevice) {
@@ -775,7 +750,7 @@ class NrfMeshRepository(
                 "Proxy configuration source: " + MeshAddress.formatAddress(status.src, false)
             )
             connectedProxyAddress.postValue(unicastAddress)
-            meshMessageLiveData.postValue(status)
+            meshMessageCallback.postValue(status)
         } else if (meshMessage is ConfigCompositionDataStatus) {
             val status = meshMessage
             isCompositionDataReceived = true
@@ -805,7 +780,7 @@ class NrfMeshRepository(
                 provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.APP_KEY_STATUS_RECEIVED)
                 handler.postDelayed({
                     val networkTransmitSet =
-                        ConfigNetworkTransmitSet(2, 1)
+                        ConfigNetworkTransmitSet(3, 2)
                     sendMessage(node.unicastAddress, networkTransmitSet, true)
                 }, 1500)
             }
@@ -856,15 +831,15 @@ class NrfMeshRepository(
             bleMeshManager.setClearCacheRequired()
             extendedMeshNode!!.postValue(null)
             loadNodes()
-            meshMessageLiveData.postValue(meshMessage)
+            meshMessageCallback.postValue(meshMessage)
             resetNode()
         } else if (meshMessage is ConfigRelayStatus) {
             if (updateNode(node)) {
-                meshMessageLiveData.postValue(meshMessage)
+                meshMessageCallback.postValue(meshMessage)
             }
         } else if (meshMessage is ConfigProxyStatus) {
             if (updateNode(node)) {
-                meshMessageLiveData.postValue(meshMessage)
+                meshMessageCallback.postValue(meshMessage)
             }
         } else if (meshMessage is GenericOnOffStatus) {
             if (updateNode(node)) {
@@ -891,9 +866,7 @@ class NrfMeshRepository(
                 }
             }
         }
-        if (meshMessageLiveData.hasActiveObservers()) {
-            meshMessageLiveData.postValue(meshMessage)
-        }
+        meshMessageCallback.postValue(meshMessage)
         //Refresh mesh network live data
         meshNetworkLiveData.refresh(meshManagerApi.meshNetwork!!)
     }
@@ -907,12 +880,11 @@ class NrfMeshRepository(
         if (node != null) {
             var status: GenericStatusMessage? = null
             val opCode = MeshParserUtils.unsignedByteToInt(accessMessage.accessPdu[0])
-            Log.d("TKUP-NEURAL::", "Received opCode=${opCode}")
             if (opCode == OpCodes.NT_OPCODE_EVENT) {
                 status = NodeEventStatus(accessMessage)
-                trainingMessageCallback.postValue(status)
-                if (!eventComparator.compare(status)) {
-                    eventMessageLiveData.postValue(status)
+                when (status.eventType) {
+                    EventType.HELLO -> helloCallback.postValue(status)
+                    else -> trainingMessageCallback.postValue(status)
                 }
             } else {
                 var status: VendorModelMessageStatus? = null
@@ -924,11 +896,9 @@ class NrfMeshRepository(
                     OpCodes.NT_OPCODE_PERIPHERAL_STATUS -> status = NodePeripheralMessageStatus(accessMessage, modelIdentifier)
                 }
                 update(node, status)
-                if (meshMessageLiveData.hasActiveObservers()) {
-                    meshMessageLiveData.postValue(status)
-                }
-                if (keepMessageLiveData.hasActiveObservers() && status is NodeControlMessageStatus) {
-                    keepMessageLiveData.postValue(status)
+                meshMessageCallback.postValue(status)
+                if (status is NodeControlMessageStatus) {
+                    keepMessageCallback.postValue(status)
                 }
             }
         }
@@ -1161,10 +1131,10 @@ class NrfMeshRepository(
         }
     }
 
-    fun sendMessage(unicastAddress: Int, message: MeshMessage, isProvisioning: Boolean = false) {
-        if (!isProvisioning) {
+    fun sendMessage(unicastAddress: Int, message: MeshMessage, isBlocking: Boolean = false) {
+        if (!isBlocking) {
             isSending = true
-            Handler(Looper.getMainLooper()).postDelayed({ isSending = false }, 100)
+            Handler(Looper.getMainLooper()).postDelayed({ isSending = false }, 20)
         }
         meshManagerApi.createMeshPdu(unicastAddress, message)
     }

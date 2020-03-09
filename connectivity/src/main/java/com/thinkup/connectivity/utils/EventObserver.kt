@@ -12,6 +12,7 @@ class EventObserver<T> {
         this.callback = null
     }
 
+    @Synchronized
     fun postValue(value: T?) = callback?.onPost(value)
 
     interface Callback<T> {

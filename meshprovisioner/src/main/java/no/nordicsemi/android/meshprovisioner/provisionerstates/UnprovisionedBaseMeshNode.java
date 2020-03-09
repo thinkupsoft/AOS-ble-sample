@@ -43,7 +43,7 @@ abstract class UnprovisionedBaseMeshNode implements Parcelable {
     protected byte[] ivIndex;
     boolean isProvisioned;
     boolean isConfigured;
-    protected String nodeName = "My Node";
+    protected String nodeName = "-1";
     byte[] provisionerPublicKeyXY;
     byte[] provisioneePublicKeyXY;
     byte[] sharedECDHSecret;

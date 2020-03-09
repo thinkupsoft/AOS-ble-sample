@@ -57,7 +57,6 @@ class BleMeshManager(context: Context): LoggableBleManager<BleMeshManagerCallbac
             // This callback will be called each time a notification is received.
             val onDataReceived =
                 DataReceivedCallback { device: BluetoothDevice?, data: Data ->
-                    Log.d("TKUP::DR", data.toString())
                     mCallbacks.onDataReceived(
                         device,
                         mtu,

@@ -75,11 +75,11 @@ object PeripheralParams {
     const val LED_FLASH = 0x03
     const val LED_FAST_FLASH = 0x04
     // GESTURE
-    const val HOVER = 0b00
+    const val HOVER = 0b01
     const val TOUCH = 0b10
     const val BOTH = 0b11
     // DISTANCE
-    const val HIGH = 0b00
+    const val HIGH = 0b01
     const val MIDDLE = 0b10
     const val LOW = 0b11
     // FILTER
@@ -104,6 +104,12 @@ object StatusParams {
     const val HIT = 0xA0
     const val TIMEOUT = 0xA1
     const val LOW_BAT = 0xB0
+}
+
+object DimmerParams {
+    const val LOW = 0x05
+    const val MEDIUM = 0x32
+    const val HIGH = 0x64
 }
 
 enum class EventType(val value: Int, val text: String) {

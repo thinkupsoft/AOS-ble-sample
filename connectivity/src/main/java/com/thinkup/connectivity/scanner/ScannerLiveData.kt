@@ -17,6 +17,7 @@ class ScannerLiveData(private var bluetoothEnabled: Boolean, private var locatio
     private var scanningStarted: Boolean = false
     private var startScanning: Boolean = false
     private var stopScanning: Boolean = false
+    var requestingLocation: Boolean = false
     private val handler: Handler = Handler()
     private val delayMs: Long = 800
     private val timeLapse: Long = 800
@@ -211,6 +212,10 @@ class ScannerLiveData(private var bluetoothEnabled: Boolean, private var locatio
      */
     fun isLocationEnabled(): Boolean {
         return locationEnabled
+    }
+
+    fun isRequestingLocation(): Boolean {
+        return requestingLocation
     }
 
     internal fun setLocationEnabled(enabled: Boolean) {
