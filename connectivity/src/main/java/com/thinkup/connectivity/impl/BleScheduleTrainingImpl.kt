@@ -81,7 +81,6 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         repository.getTrainingMessageCallback().setObserver(this)
         ended = 0
         callback?.onStartTraining()
-        delay(trainingGroup[0].actions[0].steps[0].delay - DELTA_STEP_DELAY)
         stepFirst()
     }
 
@@ -113,7 +112,6 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 stepActions.add(snc)
             }
         }
-        delay(stepActions[0].delay - DELTA_STEP_DELAY)
         val ids = mutableListOf<Int>()
         var timeout = 0
         stepActions.forEach { snc ->
@@ -124,11 +122,13 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         val message = NodeControlMessageUnacked(
             ControlParams.START.toByte(), timeout, appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(ids)
         )
+        delay(stepActions[0].delay - DELTA_STEP_DELAY)
         sendBroadcastMessage(message)
     }
 
     @Synchronized
     private fun stepFirst() = executeService {
+        val messages = mutableListOf<NodeControlMessageUnacked>()
         bulkMessaging(trainingGroup) {
             println("Thinkup: First Step")
             val currentStep = it.group.currentStep
@@ -158,16 +158,19 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
 
             }
             Log.d("TKUP-NEURAL::EVE", "Started ${timeout}")
-            val message = NodeControlMessageUnacked(
-                ControlParams.START.toByte(),
-                timeout,
-                appkey,
-                model.modelId,
-                model.companyIdentifier,
-                OpCodes.getGroupMask(ids)
+            messages.add(
+                NodeControlMessageUnacked(
+                    ControlParams.START.toByte(),
+                    timeout,
+                    appkey,
+                    model.modelId,
+                    model.companyIdentifier,
+                    OpCodes.getGroupMask(ids)
+                )
             )
-            sendBroadcastMessage(message)
         }
+        delay(trainingGroup[0].actions[0].steps[0].delay - DELTA_STEP_DELAY)
+        messages.forEach { sendBroadcastMessage(it) }
     }
 
     private fun generateSteps() {
