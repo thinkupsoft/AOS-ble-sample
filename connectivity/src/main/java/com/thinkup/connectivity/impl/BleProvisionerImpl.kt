@@ -92,7 +92,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
         }
     }
 
-    private fun updateName(meshNode: ProvisionedMeshNode) {
+    override fun updateName(meshNode: ProvisionedMeshNode) {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         network?.updateNodeName(meshNode, getNextNameAvailable())
     }

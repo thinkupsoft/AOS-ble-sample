@@ -29,6 +29,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
     override fun getDistanceValue(): Int = options.distance
     override fun getSoundValue(): Boolean = options.sound
 
+    @Synchronized
     override fun onPost(e: NodeEventStatus?) {
         if (waitingDeactivation && e?.eventType == EventType.HIT) {
             waitingDeactivation = false
@@ -65,9 +66,15 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
     override fun start() = executeService {
         Log.d("TKUP-NEURAL::", "Start")
         bulkMessaging(groups) { group ->
-            sendMessage(
-                group.group,
-                NodeControlMessageUnacked(ControlParams.SET_LED_OFF.toByte(), NO_CONFIG, appkey, model.modelId, model.companyIdentifier),
+            sendBroadcastMessage(
+                NodeControlMessageUnacked(
+                    ControlParams.SET_LED_OFF.toByte(),
+                    NO_CONFIG,
+                    appkey,
+                    model.modelId,
+                    model.companyIdentifier,
+                    DYNAMIC_MASK
+                ),
                 true
             )
         }
@@ -78,6 +85,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         stepFirst()
     }
 
+    @Synchronized
     private fun configNextStep(trainingGroup: GroupSteps, node: ProvisionedMeshNode?) = executeService {
         node?.let {
             val index = trainingGroup.group.nodes.indexOfFirst { it.unicastAddress == node.unicastAddress }
@@ -94,6 +102,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         }
     }
 
+    @Synchronized
     private fun startNextStep(step: GroupSteps) = executeService {
         println("Thinkup: Next Step")
 
@@ -105,17 +114,20 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
             }
         }
         delay(stepActions[0].delay - DELTA_STEP_DELAY)
-        bulkMessaging(stepActions) { snc ->
-            val node = step.group.nodes[snc.nodeIndex]
-            Log.d("TKUP-NEURAL::EVE", "Started ${snc.timeout}")
-            sendBroadcastMessage(
-                NodeControlMessageUnacked(
-                    ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
-                )
-            )
+        val ids = mutableListOf<Int>()
+        var timeout = 0
+        stepActions.forEach { snc ->
+            timeout = snc.timeout
+            ids.add(step.group.nodes[snc.nodeIndex].nodeName.toInt())
         }
+        Log.d("TKUP-NEURAL::EVE", "Started ${timeout}")
+        val message = NodeControlMessageUnacked(
+            ControlParams.START.toByte(), timeout, appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(ids)
+        )
+        sendBroadcastMessage(message)
     }
 
+    @Synchronized
     private fun stepFirst() = executeService {
         bulkMessaging(trainingGroup) {
             println("Thinkup: First Step")
@@ -126,28 +138,35 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 action.steps.firstOrNull { s -> s.stepIndex == currentStep }?.let { snc ->
                     stepActions.add(snc)
                 }
-                executeService {
-                    val node = it.group.nodes[action.nodeIndex]
-                    Log.d("TKUP-NEURAL::", "node ${node.nodeName}")
-                    action.steps.firstOrNull { s -> !s.sended }?.let { snc ->
-                        val shape = snc.shapes.random()
-                        sendBroadcastMessage(
-                            NodeStepPeripheralMessageUnacked(
-                                shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
-                            )
+                val node = it.group.nodes[action.nodeIndex]
+                Log.d("TKUP-NEURAL::", "node ${node.nodeName}")
+                action.steps.firstOrNull { s -> !s.sended }?.let { snc ->
+                    val shape = snc.shapes.random()
+                    sendBroadcastMessage(
+                        NodeStepPeripheralMessageUnacked(
+                            shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
                         )
-                        snc.sended = true
-                    }
+                    )
+                    snc.sended = true
                 }
             }
-            bulkMessaging(stepActions) { snc ->
-                val node = it.group.nodes[snc.nodeIndex]
-                sendBroadcastMessage(
-                    NodeControlMessageUnacked(
-                        ControlParams.START.toByte(), snc.timeout, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
-                    )
-                )
+            val ids = mutableListOf<Int>()
+            var timeout = 0
+            stepActions.forEach { snc ->
+                timeout = snc.timeout
+                ids.add(it.group.nodes[snc.nodeIndex].nodeName.toInt())
+
             }
+            Log.d("TKUP-NEURAL::EVE", "Started ${timeout}")
+            val message = NodeControlMessageUnacked(
+                ControlParams.START.toByte(),
+                timeout,
+                appkey,
+                model.modelId,
+                model.companyIdentifier,
+                OpCodes.getGroupMask(ids)
+            )
+            sendBroadcastMessage(message)
         }
     }
 
@@ -246,7 +265,8 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
             StarterMethod.INMEDIATELY -> start()
             StarterMethod.COUNTDOWN -> {
                 callback?.onCountdown()
-                countdown()}
+                countdown()
+            }
             StarterMethod.DEACTIVATION -> deactivationMessage()
         }
     }

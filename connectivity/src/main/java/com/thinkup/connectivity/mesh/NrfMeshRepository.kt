@@ -481,7 +481,7 @@ class NrfMeshRepository(
                                 true
                             )
                         }
-                    }, 2000)
+                    }, 500)
                 } else {
                     provisionedNode = false
                     provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.PROVISIONER_UNASSIGNED)
@@ -771,7 +771,7 @@ class NrfMeshRepository(
                 val networkKey = meshNetwork!!.netKeys[index]
                 val configAppKeyAdd = ConfigAppKeyAdd(networkKey, appKey!!)
                 sendMessage(node.unicastAddress, configAppKeyAdd, true)
-            }, 1500)
+            }, 500)
         } else if (meshMessage is ConfigAppKeyStatus) {
             val status = meshMessage
             if (status.isSuccessful) {
@@ -782,7 +782,7 @@ class NrfMeshRepository(
                     val networkTransmitSet =
                         ConfigNetworkTransmitSet(3, 2)
                     sendMessage(node.unicastAddress, networkTransmitSet, true)
-                }, 1500)
+                }, 500)
             }
         } else if (meshMessage is ConfigNetworkTransmitStatus) {
             provisionedNode = false
