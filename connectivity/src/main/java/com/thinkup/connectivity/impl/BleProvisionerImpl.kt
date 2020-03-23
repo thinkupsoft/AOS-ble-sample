@@ -3,6 +3,7 @@ package com.thinkup.connectivity.impl
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.thinkup.connectivity.BleProvisioner
@@ -35,17 +36,13 @@ import no.nordicsemi.android.meshprovisioner.transport.*
 class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BaseBleImpl(context, setting, repository),
     BleProvisioner, ProvisionCallback {
 
-    private var status = MutableLiveData<Status>()
+    private var status = TimeoutLiveData(timeout = PROVISION_TIMEOUT, default = Status.TIMEOUT)
     private var device: ExtendedBluetoothDevice? = null
     private var meshNode: ProvisionedMeshNode? = null
-    private val handler = Handler(Looper.getMainLooper())
-    private var runnable = Runnable {}
 
     private fun handlerBindAppKey(meshNode: ProvisionedMeshNode) {
         if (status.value?.priority ?: Status.BINDING_APP_KEY.priority > Status.BINDING_APP_KEY.priority) return
-        runnable = Runnable { handlerBindAppKey(meshNode) }
         bindAppKey(meshNode)
-        handler.postDelayed(runnable, STEP_TIMEOUT)
     }
 
     override fun getStatus(): LiveData<Status> = status
@@ -54,8 +51,10 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
         context: Context,
         device: ExtendedBluetoothDevice
     ): LiveData<Status> {
-        status = TimeoutLiveData(timeout = PROVISION_TIMEOUT, default = Status.TIMEOUT, control = Status.FULL_CONFIGURED) {
-            handler.removeCallbacks(runnable)
+        status = TimeoutLiveData(
+            timeout = PROVISION_TIMEOUT, default = Status.TIMEOUT,
+            control = Status.FULL_CONFIGURED, initialValue = Status.CONNECTING
+        ) {
             meshNode?.let { forceDelete(it.unicastAddress) }
         }
         status.postValue(Status.CONNECTING)
@@ -161,7 +160,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
                 val provisioner: Provisioner = network.selectedProvisioner
                 val unicast: Int = network.nextAvailableUnicastAddress(elementCount, provisioner)
                 network.assignUnicastAddress(unicast)
-                Handler(Looper.getMainLooper()).postDelayed({ provisioningAction(node) }, 200)
+                provisioningAction(node)
             }
         }
     }
@@ -177,13 +176,11 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
 
     override fun bindNodeKeyComplete(meshNode: ProvisionedMeshNode) {
         this.meshNode = meshNode
-        handler.removeCallbacks(runnable)
         handlerBindAppKey(meshNode)
     }
 
     override fun bindAppKeyComplete(meshNode: ProvisionedMeshNode) {
         this.meshNode = meshNode
-        handler.removeCallbacks(runnable)
         updateName(meshNode)
         setPublication(meshNode)
     }
@@ -191,9 +188,12 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
     override fun setPublicationComplete(meshNode: ProvisionedMeshNode) {
         this.meshNode = meshNode
         repository.isSending = false
-        handler.removeCallbacks(runnable)
         status.postValue(Status.FULL_CONFIGURED)
-        if (setting.enabledProvisionConfig())
-            Handler(Looper.getMainLooper()).postDelayed({ configMessage(meshNode) }, STEP_TIMEOUT)
+        if (setting.enabledProvisionConfig()) {
+            status.complete()
+            this.device = null
+            this.meshNode = null
+            configMessage(meshNode)
+        }
     }
 }

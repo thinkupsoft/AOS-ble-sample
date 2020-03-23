@@ -157,7 +157,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 ids.add(it.group.nodes[snc.nodeIndex].nodeName.toInt())
 
             }
-            Log.d("TKUP-NEURAL::EVE", "Started ${timeout}")
+            Log.d("TKUP-NEURAL::EVE", "Started $timeout")
             messages.add(
                 NodeControlMessageUnacked(
                     ControlParams.START.toByte(),
@@ -169,7 +169,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 )
             )
         }
-        delay(trainingGroup[0].actions[0].steps[0].delay - DELTA_STEP_DELAY)
+        delay(60000)
         messages.forEach { sendBroadcastMessage(it) }
     }
 

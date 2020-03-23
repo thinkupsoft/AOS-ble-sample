@@ -31,7 +31,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
     BaseBleImpl(context, setting, repository), BleSession, EventObserver.Callback<NodeControlMessageStatus?> {
 
     private val state = MutableLiveData<ConnectionState>()
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
     private val runnable = Runnable { keepAlive() }
     private var keepAliveProgressing = false
     val connected = mutableListOf<ProvisionedMeshNode>()
@@ -134,7 +134,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
 
     private fun autoConnect() {
         state.postValue(ConnectionState.CONNECTING)
-        if (autoConnectCondition()) Handler().postDelayed({ autoConnect { } }, 400)
+        if (autoConnectCondition()) Handler(Looper.getMainLooper()).postDelayed({ autoConnect { } }, 400)
     }
 
     private fun registerCallback() {

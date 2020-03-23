@@ -2,6 +2,7 @@ package com.thinkup.connectivity.mesh
 
 import android.content.Context
 import android.os.Handler
+import android.os.Looper
 import com.thinkup.connectivity.utils.ExtendedBluetoothDevice
 import no.nordicsemi.android.meshprovisioner.provisionerstates.UnprovisionedMeshNode
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
@@ -19,7 +20,7 @@ fun NrfMeshRepository.provision(
     isSending = true
     this.provisionCallback = provisionCallback
     disconnect()
-    Handler().postDelayed({ connect(context, device, false) }, 1000)
+    Handler(Looper.getMainLooper()).postDelayed({ connect(context, device, false) }, 1000)
 }
 
 fun NrfMeshRepository.deviceReadyProvision(isProvisioning: Boolean) {

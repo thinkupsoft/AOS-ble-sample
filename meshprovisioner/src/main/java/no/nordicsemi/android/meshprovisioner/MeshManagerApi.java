@@ -25,6 +25,7 @@ package no.nordicsemi.android.meshprovisioner;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -146,7 +147,7 @@ public class MeshManagerApi implements MeshMngrApi, GroupsLoaderCallback {
      */
     public MeshManagerApi(@NonNull final Context context) {
         this.mContext = context;
-        mHandler = new Handler();
+        mHandler = new Handler(Looper.getMainLooper());
         mMeshProvisioningHandler = new MeshProvisioningHandler(context, internalTransportCallbacks, internalMeshMgrCallbacks);
         mMeshMessageHandler = new MeshMessageHandler(context, internalTransportCallbacks, networkLayerCallbacks, upperTransportLayerCallbacks);
         initBouncyCastle();

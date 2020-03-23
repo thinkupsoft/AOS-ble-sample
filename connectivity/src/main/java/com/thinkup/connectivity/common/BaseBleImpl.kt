@@ -2,6 +2,7 @@ package com.thinkup.connectivity.common
 
 import android.content.Context
 import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.LiveData
 import com.thinkup.connectivity.BleConnection
 import com.thinkup.connectivity.BleSetting
@@ -77,7 +78,7 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
 
     protected fun sendReplicateMessage(group: Group, message: MeshMessage, isBlocking: Boolean) {
         sendMessage(group.address, message, isBlocking)
-        Handler().postDelayed({ sendMessage(group.address, message, isBlocking) }, REPLICATE_DELAY)
+        Handler(Looper.getMainLooper()).postDelayed({ sendMessage(group.address, message, isBlocking) }, REPLICATE_DELAY)
     }
 
     protected fun sendBroadcastMessage(message: MeshMessage, isBlocking: Boolean = false) {

@@ -1,6 +1,7 @@
 package com.thinkup.connectivity.common
 
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
@@ -17,7 +18,7 @@ class TrainingGroup(
     companion object {
         const val MISSED_STEP_TIMEOUT = 100L
     }
-    val handler = Handler()
+    val handler = Handler(Looper.getMainLooper())
     var runnable: Runnable? = null
 
     fun stopFallback() {

@@ -1,6 +1,7 @@
 package com.thinkup.connectivity.scanner
 
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.os.HandlerCompat.postDelayed
 import androidx.lifecycle.LiveData
@@ -18,7 +19,7 @@ class ScannerLiveData(private var bluetoothEnabled: Boolean, private var locatio
     private var startScanning: Boolean = false
     private var stopScanning: Boolean = false
     var requestingLocation: Boolean = false
-    private val handler: Handler = Handler()
+    private val handler: Handler = Handler(Looper.getMainLooper())
     private val delayMs: Long = 800
     private val timeLapse: Long = 800
     private lateinit var runnable: Runnable
