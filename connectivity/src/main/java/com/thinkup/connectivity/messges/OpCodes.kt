@@ -12,6 +12,8 @@ object OpCodes {
     const val NT_OPCODE_SET_PERIPHERAL_PRE_UNACKNOWLEDGED = 0xF3
     const val NT_OPCODE_SET_PERIPHERAL_TRAIN = 0xF4
     const val NT_OPCODE_SET_PERIPHERAL_TRAIN_UNACKNOWLEDGED = 0xF5
+    const val NT_OPCODE_SETUP_TRAIN = 0xF6
+    const val NT_OPCODE_SETUP_TRAIN_UNACKNOWLEDGED = 0xF7
     const val NT_OPCODE_GET = 0xC0
 
     // server-nodes

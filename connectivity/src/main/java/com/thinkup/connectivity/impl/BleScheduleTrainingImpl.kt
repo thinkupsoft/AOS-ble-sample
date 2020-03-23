@@ -44,16 +44,13 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                     tg.steps[group.currentStep].actual++
                     val node = getNode(e.srcAddress)
                     callback?.onAction(group.group, node, e, e.eventType, e.value.toLong())
-                    Log.d("TKUP-NEURAL::EVE", "Config node:: ${node?.nodeName}")
-                    configNextStep(tg, node)
                     if (tg.steps[group.currentStep].isCompleted()) {
                         Log.d("TKUP-NEURAL::EVE", "Completed:: ${group.currentStep}")
                         group.currentStep++
                         group.lastReceivedStep++
-                        if (group.currentStep < tg.steps.size) {
                             Log.d("TKUP-NEURAL::EVE", "Starting:: ${group.currentStep}")
-                            startNextStep(tg)
-                        }
+                            executeStep(tg)
+
                     }
                     if (group.currentStep == tg.steps.size) ended++
                     Log.d("TKUP-NEURAL::EVE", "Ended:: $ended")
@@ -98,6 +95,7 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
                 )
                 snc.sended = true
             }
+            delay(50)
         }
     }
 
@@ -124,53 +122,67 @@ class BleScheduleTrainingImpl(context: Context, setting: BleSetting, repository:
         )
         delay(stepActions[0].delay - DELTA_STEP_DELAY)
         sendBroadcastMessage(message)
+        delay(100)
+        sendBroadcastMessage(message)
+        delay(100)
+        sendBroadcastMessage(message)
     }
 
     @Synchronized
-    private fun stepFirst() = executeService {
-        val messages = mutableListOf<NodeControlMessageUnacked>()
-        bulkMessaging(trainingGroup) {
-            println("Thinkup: First Step")
-            val currentStep = it.group.currentStep
+    private fun executeStep(trainingGroup: GroupSteps) = executeService {
+        if (trainingGroup.group.currentStep < trainingGroup.steps.size) {
+
+            println("Thinkup: Execute Step")
+            val currentStep = trainingGroup.group.currentStep
             val stepActions = mutableListOf<StepNodeConfig>()
-            Log.d("TKUP-NEURAL::", it.group.toString())
-            it.actions.forEach { action ->
+            Log.d("TKUP-NEURAL::", trainingGroup.group.toString())
+            trainingGroup.actions.forEach { action ->
                 action.steps.firstOrNull { s -> s.stepIndex == currentStep }?.let { snc ->
                     stepActions.add(snc)
                 }
-                val node = it.group.nodes[action.nodeIndex]
+                val node = trainingGroup.group.nodes[action.nodeIndex]
                 Log.d("TKUP-NEURAL::", "node ${node.nodeName}")
                 action.steps.firstOrNull { s -> !s.sended }?.let { snc ->
                     val shape = snc.shapes.random()
-                    sendBroadcastMessage(
-                        NodeStepPeripheralMessageUnacked(
-                            shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
-                        )
+                    val message = NodeStepPeripheralMessageUnacked(
+                        shape, snc.color, snc.led, appkey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt())
                     )
+                    sendBroadcastMessage(message)
+                    delay(50)
+                    sendBroadcastMessage(message)
                     snc.sended = true
+                    delay(50)
                 }
             }
             val ids = mutableListOf<Int>()
             var timeout = 0
             stepActions.forEach { snc ->
                 timeout = snc.timeout
-                ids.add(it.group.nodes[snc.nodeIndex].nodeName.toInt())
+                ids.add(trainingGroup.group.nodes[snc.nodeIndex].nodeName.toInt())
 
             }
             Log.d("TKUP-NEURAL::EVE", "Started $timeout")
-            messages.add(
-                NodeControlMessageUnacked(
-                    ControlParams.START.toByte(),
-                    timeout,
-                    appkey,
-                    model.modelId,
-                    model.companyIdentifier,
-                    OpCodes.getGroupMask(ids)
-                )
-            )
+            delay(100)
+            val message = NodeControlMessageUnacked(
+                ControlParams.START.toByte(),
+                timeout,
+                appkey,
+                model.modelId,
+                model.companyIdentifier,
+                OpCodes.getGroupMask(ids))
+            sendBroadcastMessage(message)
+            delay(50)
+            sendBroadcastMessage(message)
+            delay(50)
         }
-        delay(60000)
-        messages.forEach { sendBroadcastMessage(it) }
+    }
+
+    @Synchronized
+    private fun stepFirst() = executeService {
+        val messages = mutableListOf<NodeControlMessageUnacked>()
+        bulkMessaging(trainingGroup) {
+           executeStep(it)
+        }
     }
 
     private fun generateSteps() {

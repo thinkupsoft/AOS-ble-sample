@@ -2,6 +2,7 @@ package com.thinkup.connectivity
 
 import androidx.lifecycle.LiveData
 import com.thinkup.connectivity.messges.NO_CONFIG
+import com.thinkup.connectivity.messges.setup.TrainSetup
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 interface BleNode : BleConnection {
@@ -15,4 +16,5 @@ interface BleNode : BleConnection {
     fun configMessage(node: ProvisionedMeshNode, id: Int = NO_CONFIG, ack: Boolean = true)
     fun setPrePeripheralMessage(node: ProvisionedMeshNode, dimmer: Int, gesture: Int, distance: Int, sound: Int, ack: Boolean = true)
     fun setStepPeripheralMessage(node: ProvisionedMeshNode, shape: Int, color: Int, led: Int, ack: Boolean = true)
+    fun setupTrainMessage(id: Int, dimmer: Int, gesture: Int, distance: Int, sound: Int, steps: List<TrainSetup>, ack: Boolean = true)
 }

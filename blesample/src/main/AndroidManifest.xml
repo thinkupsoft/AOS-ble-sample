@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
         package="com.thinkup.blesample">
 
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -19,13 +20,15 @@
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
-            android:theme="@style/AppTheme.NoActionBar">
-        <activity android:name=".ui.ScheduledActivity"></activity>
+            android:theme="@style/AppTheme.NoActionBar"
+            tools:ignore="GoogleAppIndexingWarning">
+        <activity android:name=".ui.ScheduledActivity" />
         <activity android:name=".ui.GroupDetailActivity" />
         <activity android:name=".ui.NodeDetailActivity" />
         <activity android:name=".ui.GroupsActivity" />
         <activity android:name=".ui.ScannerActivity" />
         <activity android:name=".ui.TrainingActivity" />
+        <activity android:name=".ui.SetupTrainingActivity" />
         <activity android:name=".ui.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

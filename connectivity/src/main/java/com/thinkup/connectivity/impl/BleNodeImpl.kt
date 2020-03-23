@@ -20,6 +20,9 @@ import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessageUnacked
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
+import com.thinkup.connectivity.messges.setup.NodeTrainSetupMessage
+import com.thinkup.connectivity.messges.setup.NodeTrainSetupMessageUnacked
+import com.thinkup.connectivity.messges.setup.TrainSetup
 import com.thinkup.connectivity.messges.status.NodeGetMessage
 import com.thinkup.connectivity.utils.TimeoutLiveData
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
@@ -166,6 +169,32 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         }
     }
 
+    override fun setupTrainMessage(id: Int, dimmer: Int, gesture: Int, distance: Int, sound: Int, steps: List<TrainSetup>, ack: Boolean) {
+        val node = getNode(id)
+        node?.let {
+            val element: Element? = getElement(node)
+            if (element != null) {
+                val model = getModel<VendorModel>(element)
+                if (model != null) {
+                    val appKey = getAppKey(model.boundAppKeyIndexes[0])
+                    appKey?.let {
+                        sendMessage(
+                            node,
+                            if (ack) NodeTrainSetupMessage(
+                                dimmer, gesture, distance, sound, steps,
+                                appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                            )
+                            else NodeTrainSetupMessageUnacked(
+                                dimmer, gesture, distance, sound, steps,
+                                appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     override fun identify(nodes: List<ProvisionedMeshNode>) {
         nodes.forEach {
             executeService {
@@ -197,7 +226,14 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
                     val msg = NodeStepPeripheralMessageUnacked(
-                        shape, color, PeripheralParams.LED_PERMANENT, appKey, model.modelId, model.companyIdentifier, OpCodes.getUnicastMask(node.nodeName.toInt()))
+                        shape,
+                        color,
+                        PeripheralParams.LED_PERMANENT,
+                        appKey,
+                        model.modelId,
+                        model.companyIdentifier,
+                        OpCodes.getUnicastMask(node.nodeName.toInt())
+                    )
                     peripheralMessage(node, msg)
                 }
             }

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+    <include layout="@layout/toolbar" />
+
+    <com.thinkup.blesample.controls.MultiSpinner
+            android:id="@+id/groups"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:spinnerMode="dialog"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/fixed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/groups">
+
+        <TextView
+                android:id="@+id/fixedTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Datos fijos"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+                android:id="@+id/timeoutTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:text="Timeout"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/fixedTitle" />
+
+        <NumberPicker
+                android:id="@+id/timeout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="@+id/timeoutTitle"
+                app:layout_constraintTop_toBottomOf="@+id/timeoutTitle" />
+
+        <TextView
+                android:id="@+id/delayTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:text="Delay"
+                app:layout_constraintStart_toEndOf="@+id/timeoutTitle"
+                app:layout_constraintTop_toBottomOf="@+id/fixedTitle" />
+
+        <NumberPicker
+                android:id="@+id/delay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="@id/delayTitle"
+                app:layout_constraintTop_toBottomOf="@+id/delayTitle" />
+
+        <CheckBox
+                android:id="@+id/sound"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sound"
+                app:layout_constraintStart_toEndOf="@+id/delay"
+                app:layout_constraintTop_toTopOf="@id/delay" />
+
+
+        <TextView
+                android:id="@+id/distanceTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Distance"
+                app:layout_constraintStart_toEndOf="@+id/delay"
+                app:layout_constraintTop_toBottomOf="@id/sound" />
+
+        <Spinner
+                android:id="@+id/distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toEndOf="@+id/distanceTitle"
+                app:layout_constraintTop_toBottomOf="@id/sound" />
+
+        <TextView
+                android:id="@+id/dimmerTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Dimmer"
+                app:layout_constraintStart_toEndOf="@+id/delay"
+                app:layout_constraintTop_toBottomOf="@id/distance" />
+
+        <Spinner
+                android:id="@+id/dimmer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toEndOf="@+id/dimmerTitle"
+                app:layout_constraintTop_toBottomOf="@id/distance" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <LinearLayout
+            android:id="@+id/step"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/fixed">
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Datos cada paso" />
+
+        <com.thinkup.blesample.controls.MultiSpinner
+                android:id="@+id/shapes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:spinnerMode="dialog"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/groups" />
+
+        <com.thinkup.blesample.controls.MultiSpinner
+                android:id="@+id/colors"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:spinnerMode="dialog"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/shapes" />
+
+        <CheckBox
+                android:id="@+id/ledmode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Flash"
+                app:layout_constraintStart_toStartOf="@+id/colors"
+                app:layout_constraintTop_toBottomOf="@id/countdown" />
+
+        <Button
+                android:id="@+id/addTraining"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Add"
+                app:layout_constraintStart_toStartOf="@id/step"
+                app:layout_constraintTop_toBottomOf="@+id/step" />
+
+        <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/trainingList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+    </LinearLayout>
+
+    <Button
+            android:id="@+id/executeTraining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="@id/step" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

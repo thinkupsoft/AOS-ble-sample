@@ -36,6 +36,16 @@
             app:layout_constraintStart_toStartOf="parent"/>
 
     <Button
+            android:id="@+id/setupButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:layout_marginBottom="16dp"
+            android:text="Setup"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/trainingButton"/>
+
+    <Button
             android:id="@+id/groupsButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

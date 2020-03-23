@@ -20,6 +20,7 @@ abstract class BaseActivity : AppCompatActivity() {
     val DETAIL_REQUEST = 102
     val TRAINING_REQUEST = 103
     val SCHEDULED_REQUEST = 104
+    val SETUP_REQUEST = 105
     val bleSession: BleSession by inject()
 
     private fun loadToolbar() {
