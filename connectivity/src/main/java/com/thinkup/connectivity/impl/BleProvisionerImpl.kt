@@ -57,6 +57,7 @@ class BleProvisionerImpl(context: Context, setting: BleSetting, repository: NrfM
         ) {
             meshNode?.let { forceDelete(it.unicastAddress) }
         }
+        repository.isSending = true
         status.postValue(Status.CONNECTING)
         this.device = device
         repository.provision(context, device, this)

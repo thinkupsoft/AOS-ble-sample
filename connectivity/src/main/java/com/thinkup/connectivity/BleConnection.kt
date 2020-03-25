@@ -39,5 +39,4 @@ interface BleConnection {
 
     // groups
     fun sendMessage(group: Group, message: MeshMessage, isBlocking: Boolean = false)
-
 }

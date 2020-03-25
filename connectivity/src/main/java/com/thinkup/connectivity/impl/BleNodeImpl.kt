@@ -9,10 +9,7 @@ import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.common.BaseBleImpl
 import com.thinkup.connectivity.mesh.NodeCallback
 import com.thinkup.connectivity.mesh.NrfMeshRepository
-import com.thinkup.connectivity.messges.ColorParams
-import com.thinkup.connectivity.messges.OpCodes
-import com.thinkup.connectivity.messges.PeripheralParams
-import com.thinkup.connectivity.messges.ShapeParams
+import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.config.NodeConfigMessage
 import com.thinkup.connectivity.messges.config.NodeConfigMessageUnacked
 import com.thinkup.connectivity.messges.control.NodeControlMessage
@@ -29,6 +26,7 @@ import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.ConfigNodeReset
 import no.nordicsemi.android.meshprovisioner.transport.Element
+import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BaseBleImpl(context, setting, repository), BleNode {
@@ -187,6 +185,31 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
                             else NodeTrainSetupMessageUnacked(
                                 dimmer, gesture, distance, sound, steps,
                                 appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    override fun sendBroadcast(mask: String, timeout: Long, isBlocking: Boolean) {
+        val node = getNode(2)
+        node?.let {
+            val element: Element? = getElement(node)
+            if (element != null) {
+                val model = getModel<VendorModel>(element)
+                if (model != null) {
+                    val appKey = getAppKey(model.boundAppKeyIndexes[0])
+                    appKey?.let {
+                        sendBroadcastMessage(
+                            NodeControlMessage(
+                                ControlParams.START.toByte(),
+                                timeout.toInt(),
+                                appKey,
+                                model.modelId,
+                                model.companyIdentifier,
+                                mask
                             )
                         )
                     }

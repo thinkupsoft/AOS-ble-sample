@@ -425,7 +425,7 @@ class NrfMeshRepository(
 
     override fun onDeviceConnected(device: BluetoothDevice) {
         isConnected.postValue(true)
-        //isConnectedToProxy.postValue(true)
+        isConnectedToProxy.postValue(true)
     }
 
     override fun onDeviceDisconnecting(device: BluetoothDevice) {
@@ -788,7 +788,7 @@ class NrfMeshRepository(
             provisionedNode = false
             isNetworkRetransmitSetCompleted = true
             provisioningStateLiveData.onMeshNodeStateUpdated(ProvisionerStates.NETWORK_TRANSMIT_STATUS_RECEIVED)
-            if (isSending) bindNodeKeyComplete(node)
+            bindNodeKeyComplete(node)
         } else if (meshMessage is ConfigModelAppStatus) {
             if (updateNode(node)) {
                 val status = meshMessage

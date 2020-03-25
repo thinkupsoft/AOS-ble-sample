@@ -193,6 +193,7 @@ class BleSessionImpl(context: Context, setting: BleSetting, repository: NrfMeshR
         if (element != null) {
             val model = getModel<VendorModel>(element)
             if (model != null) {
+                if (model.boundAppKeyIndexes.isEmpty()) return
                 val appKey = getAppKey(model.boundAppKeyIndexes[0])
                 appKey?.let {
                     sendBroadcastMessage(
