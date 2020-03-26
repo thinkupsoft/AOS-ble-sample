@@ -33,7 +33,6 @@ import java.nio.ByteOrder;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -68,7 +67,7 @@ import no.nordicsemi.android.meshprovisioner.utils.SecureUtils;
 
 
 @SuppressWarnings("WeakerAccess")
-public class MeshManagerApi implements MeshMngrApi, GroupsLoaderCallback {
+public class MeshManagerApi implements MeshMngrApi, GroupsLoaderCallback , GroupAddedCallback{
 
     private static final String TAG = MeshManagerApi.class.getSimpleName();
     public final static UUID MESH_PROVISIONING_UUID = UUID.fromString("00001827-0000-1000-8000-00805F9B34FB");
@@ -185,8 +184,8 @@ public class MeshManagerApi implements MeshMngrApi, GroupsLoaderCallback {
         return mMeshNetwork;
     }
 
-    private void updateGroups(){
-        mMeshNetworkDb.loadGroups(mMeshNetworkDao, mGroupsDao, this);
+    private void updateGroups(GroupCallback callback){
+        mMeshNetworkDb.loadGroups(mMeshNetworkDao, mGroupsDao, this, callback);
     }
 
     private void initBouncyCastle() {
@@ -1164,26 +1163,31 @@ public class MeshManagerApi implements MeshMngrApi, GroupsLoaderCallback {
         return true;
     }
 
-    public void addGroupDb(Group group) {
-        mMeshNetworkDb.insertInstGroup(mGroupDao, group);
-        updateGroups();
+    public void addGroupDb(Group group, GroupCallback callback) {
+        mMeshNetworkDb.insertInstGroup(mGroupDao, group, this, callback);
+        updateGroups(null);
     }
 
     public void deleteGroupDb(Group group) {
         Log.d("", "Thinkup delete mesh group: "+ mMeshNetwork.groups.size());
         mMeshNetworkDb.removeInstGroup(mGroupDao, group);
-        updateGroups();
+        updateGroups(null);
 
     }
 
     public void updateGroupDb(Group group){
         mMeshNetworkDb.updateGroup(mGroupDao, group);
-        updateGroups();
+        updateGroups(null);
     }
 
     @Override
     public void onGroupsLoaded(List<Group> groupsList) {
         mMeshNetwork.groups = groupsList;
         mRepositoryCallback.onGroupsLoaded(groupsList);
+    }
+
+    @Override
+    public void groupAdded(GroupCallback callback) {
+        updateGroups(callback);
     }
 }

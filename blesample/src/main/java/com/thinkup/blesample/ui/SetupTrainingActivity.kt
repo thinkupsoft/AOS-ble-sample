@@ -158,7 +158,10 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
             if (events.size == starts[currentStep].count) {
                 events.clear()
                 currentStep++
-                sendStart()
+                if (steps.size == currentStep) {
+                    clear()
+                    Toast.makeText(this, "Completed", Toast.LENGTH_SHORT).show()
+                } else sendStart()
             }
         }
     }
