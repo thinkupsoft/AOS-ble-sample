@@ -1,6 +1,7 @@
 package com.thinkup.blesample.ui
 
 import android.os.Bundle
+import android.os.Handler
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -39,6 +40,10 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
     private val nodeIds = (1..8 step 1).map { it.toString() }.toTypedArray()
     private val steps = mutableListOf<TrainSetup>()
     private val starts = mutableListOf<StartAction>()
+    private val runnable = Runnable {
+        checkStep()
+    }
+    private val handler = Handler()
 
     override fun title(): String = "Fast Training"
 
@@ -87,7 +92,8 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
                 steps.add(
                     TrainSetup(
                         shape = shape, color = color,
-                        led = if (ledmode.isChecked) PeripheralParams.LED_FAST_FLASH else PeripheralParams.LED_PERMANENT
+                        led = if (ledmode.isChecked) PeripheralParams.LED_FAST_FLASH else PeripheralParams.LED_PERMANENT,
+                        stepIndex = steps.size
                     )
                 )
                 adapter.setItems(steps)
@@ -132,6 +138,7 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
     private fun sendStart() {
         val action = starts[currentStep]
         bleNode.sendBroadcast(action.ids, (action.timeout * 1000).toLong())
+        handler .postDelayed(runnable, (action.timeout * 1000).toLong())
     }
 
     private fun clear() {
@@ -156,13 +163,18 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
         e?.let {
             events.add(e)
             if (events.size == starts[currentStep].count) {
-                events.clear()
-                currentStep++
-                if (steps.size == currentStep) {
-                    clear()
-                    Toast.makeText(this, "Completed", Toast.LENGTH_SHORT).show()
-                } else sendStart()
+                checkStep()
             }
         }
+    }
+
+    private fun checkStep() {
+        handler.removeCallbacks(runnable)
+        events.clear()
+        currentStep++
+        if (steps.size == currentStep) {
+            clear()
+            Toast.makeText(this, "Completed", Toast.LENGTH_SHORT).show()
+        } else sendStart()
     }
 }

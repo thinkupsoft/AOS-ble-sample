@@ -17,10 +17,11 @@ import kotlinx.android.synthetic.main.activity_scheduled.*
 import no.nordicsemi.android.meshprovisioner.Group
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 import org.koin.android.ext.android.inject
+import org.koin.core.qualifier.named
 
 class ScheduledActivity : BaseActivity(), TrainingCallback {
 
-    val bleScheduleTraining: BleScheduleTraining by inject()
+    val bleScheduleTraining: BleScheduleTraining by inject(named("PlanB"))
     private val adapter = RendererAdapter()
     private val list = mutableListOf<NodeEventStatus>()
 
