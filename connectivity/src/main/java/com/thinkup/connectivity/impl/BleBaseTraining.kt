@@ -22,6 +22,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
     protected lateinit var appkey: ApplicationKey
     protected lateinit var model: VendorModel
     protected lateinit var groups: List<TrainingGroup>
+    protected var useStartConfigMessage = true
 
     abstract fun start()
     abstract fun finish()
@@ -30,7 +31,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
     abstract fun getSoundValue(): Boolean
 
     private fun getMessagesKeys() {
-        bulkMessaging(groups) { group ->
+        for (group in groups) {
             if (checkInitialized()) {
                 val network = repository.getMeshNetworkLiveData().getMeshNetwork()
                 val models = network?.getModels(group.group)
@@ -84,11 +85,13 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
         this.callback = callback
         repository.isSending = true
         callback.onSettingStart()
-        action?.invoke()
         getMessagesKeys()
-        starterConfig()
-        // delay despues de pre config
-        delay(200)
+        action?.invoke()
+        if (useStartConfigMessage) {
+            starterConfig()
+            // delay despues de pre config
+            delay(200)
+        }
         repository.isSending = false
         callback.onSettingComplete()
     }

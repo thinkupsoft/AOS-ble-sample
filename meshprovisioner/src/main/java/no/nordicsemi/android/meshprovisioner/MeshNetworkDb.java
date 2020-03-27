@@ -145,9 +145,9 @@ abstract class MeshNetworkDb extends RoomDatabase {
     }
 
     void loadGroups(@NonNull final MeshNetworkDao dao,
-                     @NonNull final GroupsDao groupsDao, @NonNull GroupsLoaderCallback loaderCallback, GroupCallback groupCallback) {
+                     @NonNull final GroupsDao groupsDao, @NonNull GroupsLoaderCallback loaderCallback) {
         new LoadGroupsAsyncTask(dao,
-                groupsDao, loaderCallback, groupCallback).execute();
+                groupsDao, loaderCallback).execute();
     }
     void loadNetwork(@NonNull final MeshNetworkDao dao,
                      @NonNull final NetworkKeysDao netKeysDao,
@@ -252,9 +252,8 @@ abstract class MeshNetworkDb extends RoomDatabase {
         new InsertGroupAsyncTask(dao).execute(group);
     }
 
-    void insertInstGroup(@NonNull final GroupDao dao, @NonNull final Group group, GroupAddedCallback groupAddedCallback, GroupCallback callback) {
+    void insertInstGroup(@NonNull final GroupDao dao, @NonNull final Group group) {
         dao.insert(group);
-        groupAddedCallback.groupAdded(callback);
     }
 
     void removeInstGroup(@NonNull final GroupDao dao, @NonNull final Group group) {
@@ -338,13 +337,11 @@ abstract class MeshNetworkDb extends RoomDatabase {
         private final MeshNetworkDao meshNetworkDao;
         private final GroupsDao groupsDao;
         private final GroupsLoaderCallback mloaderCallback;
-        private final GroupCallback mgroupCallback;
 
-        LoadGroupsAsyncTask(@NonNull final MeshNetworkDao meshNetworkDao,@NonNull final GroupsDao groupsDao, @NonNull GroupsLoaderCallback loaderCallback, GroupCallback groupCallback){
+        LoadGroupsAsyncTask(@NonNull final MeshNetworkDao meshNetworkDao,@NonNull final GroupsDao groupsDao, @NonNull GroupsLoaderCallback loaderCallback){
             this.meshNetworkDao = meshNetworkDao;
             this.groupsDao = groupsDao;
             this.mloaderCallback = loaderCallback;
-            this.mgroupCallback = groupCallback;
         }
 
         @Override
@@ -356,9 +353,6 @@ abstract class MeshNetworkDb extends RoomDatabase {
             }
             Log.d("tag", "Thinkup mesh groups: " + meshNetwork.groups.size());
             mloaderCallback.onGroupsLoaded(meshNetwork.groups);
-            if (mgroupCallback != null) {
-                mgroupCallback.onGroupAddedComplete();
-            }
             return meshNetwork;
         }
 

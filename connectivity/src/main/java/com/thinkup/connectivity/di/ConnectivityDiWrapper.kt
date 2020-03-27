@@ -7,6 +7,7 @@ import com.thinkup.connectivity.mesh.NrfMeshRepository
 import com.thinkup.connectivity.scanner.ScannerRepository
 import com.thinkup.connectivity.utils.CapabilitiesUtil
 import no.nordicsemi.android.meshprovisioner.MeshManagerApi
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 object ConnectivityDiWrapper {
@@ -18,7 +19,8 @@ object ConnectivityDiWrapper {
         factory<BleGroup> { BleGroupImpl(get(), get(), get()) }
         single<BleSession> { BleSessionImpl(get(), get(), get(), get()) }
         factory<BleFastTraining> { BleFastTrainingImpl(get(), get(), get()) }
-        factory<BleScheduleTraining> { BleScheduleTrainingImpl(get(), get(), get()) }
+        factory<BleScheduleTraining>(named("PlanA")) { BleScheduleTrainingImpl(get(), get(), get()) }
+        factory<BleScheduleTraining>(named("PlanB")) { BleScheduleImpl(get(), get(), get()) }
     }
 
     fun repositoriesModule() = module {

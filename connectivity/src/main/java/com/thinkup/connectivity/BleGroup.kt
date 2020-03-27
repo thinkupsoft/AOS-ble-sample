@@ -1,14 +1,12 @@
 package com.thinkup.connectivity
 
 import com.thinkup.connectivity.messges.NO_CONFIG
-import no.nordicsemi.android.meshprovisioner.GroupAddedCallback
 import no.nordicsemi.android.meshprovisioner.Group
-import no.nordicsemi.android.meshprovisioner.GroupCallback
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.ProvisionedMeshNode
 
 interface BleGroup : BleConnection {
-    fun addGroup(name: String, callback: GroupCallback? = null): Boolean
+    fun addGroup(name: String): Boolean
     fun removeGroup(group: Group): Boolean
     fun getStatus(group: Group, model: VendorModel)
     fun addGroupNode(group: Group, meshNode: ProvisionedMeshNode?)
