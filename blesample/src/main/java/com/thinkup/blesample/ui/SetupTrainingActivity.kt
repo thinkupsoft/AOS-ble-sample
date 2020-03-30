@@ -107,9 +107,11 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
     private fun execute() {
         try {
             val steps = adapter.getItems() as List<TrainSetup>
+            var nodesQty = starts[0].count
+            starts.forEach { if (it.count> nodesQty) nodesQty = it.count }
             bleNode.setupTrainMessage(
                 nodeAddress.selectedItem.toString().toInt() + 1, dimmer.selectedItemPosition, PeripheralParams.BOTH, distance.selectedItemPosition,
-                if (sound.isChecked) PeripheralParams.BIP_START else PeripheralParams.NO_SOUND, steps
+                if (sound.isChecked) PeripheralParams.BIP_START else PeripheralParams.NO_SOUND, steps, nodesQty
             )
             addStart(nodeAddress.selectedItem.toString().toInt(), steps)
 

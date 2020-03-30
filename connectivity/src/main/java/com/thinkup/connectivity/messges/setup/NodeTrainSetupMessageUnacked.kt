@@ -8,7 +8,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class NodeTrainSetupMessageUnacked(
-    val dimmer: Int, val gesture: Int, val distance: Int, val sound: Int,
+    val dimmer: Int, val gesture: Int, val distance: Int, val sound: Int, val nodeQty: Int,
     val steps: List<TrainSetup>,
     appKey: ApplicationKey,
     modelId: Int,
@@ -17,7 +17,7 @@ class NodeTrainSetupMessageUnacked(
 ) : VendorModelMessageAcked(appKey, modelId, compId, OpCodes.NT_OPCODE_SETUP_TRAIN_UNACKNOWLEDGED) {
 
     companion object {
-        const val FIXED_SIZE = 5
+        const val FIXED_SIZE = 6
         const val STEP_SIZE = 3
     }
 
@@ -40,6 +40,7 @@ class NodeTrainSetupMessageUnacked(
         buffer.put(dimmer.toByte())
         buffer.put(sound.toByte())
         buffer.put(OpCodes.getTransactionId())
+        buffer.put(nodeQty.toByte())
 
         steps.forEach {
             buffer.put(it.led.toByte())

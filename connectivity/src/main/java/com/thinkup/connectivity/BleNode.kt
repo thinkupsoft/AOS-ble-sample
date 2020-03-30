@@ -17,7 +17,7 @@ interface BleNode : BleConnection {
     fun configMessage(node: ProvisionedMeshNode, id: Int = NO_CONFIG, ack: Boolean = true)
     fun setPrePeripheralMessage(node: ProvisionedMeshNode, dimmer: Int, gesture: Int, distance: Int, sound: Int, ack: Boolean = true)
     fun setStepPeripheralMessage(node: ProvisionedMeshNode, shape: Int, color: Int, led: Int, ack: Boolean = true)
-    fun setupTrainMessage(id: Int, dimmer: Int, gesture: Int, distance: Int, sound: Int, steps: List<TrainSetup>, ack: Boolean = true)
+    fun setupTrainMessage(id: Int, dimmer: Int, gesture: Int, distance: Int, sound: Int, steps: List<TrainSetup>, activeNodes: Int, ack: Boolean = true)
     // broadcast
     fun sendBroadcast(mask: String, timeout: Long, isBlocking: Boolean = false)
 }

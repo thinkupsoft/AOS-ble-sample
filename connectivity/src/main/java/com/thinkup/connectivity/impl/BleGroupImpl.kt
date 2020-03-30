@@ -1,7 +1,6 @@
 package com.thinkup.connectivity.impl
 
 import android.content.Context
-import android.util.Log
 import com.thinkup.connectivity.BleGroup
 import com.thinkup.connectivity.BleSetting
 import com.thinkup.connectivity.common.BaseBleImpl
@@ -11,24 +10,23 @@ import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.config.NodeConfigMessageUnacked
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessageUnacked
-import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessage
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
 import com.thinkup.connectivity.messges.status.NodeGetMessage
-import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
+import no.nordicsemi.android.meshprovisioner.GroupAddedCallback
 import no.nordicsemi.android.meshprovisioner.Group
+import no.nordicsemi.android.meshprovisioner.GroupCallback
 import no.nordicsemi.android.meshprovisioner.models.VendorModel
 import no.nordicsemi.android.meshprovisioner.transport.*
-import no.nordicsemi.android.meshprovisioner.utils.MeshAddress
 
 class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BaseBleImpl(context, setting, repository), BleGroup {
 
-    override fun addGroup(name: String): Boolean {
+    override fun addGroup(name: String, callback: GroupCallback?): Boolean {
         val network = repository.getMeshNetworkLiveData().getMeshNetwork()
         val newGroup = network?.createGroup(network.selectedProvisioner, name)
         newGroup?.let {
             if (network.addGroup(it)) {
-                repository.getMeshManagerApi().addGroupDb(it)
+                repository.getMeshManagerApi().addGroupDb(it, callback)
                 return true
             }
         }
@@ -58,6 +56,7 @@ class BleGroupImpl(context: Context, setting: BleSetting, repository: NrfMeshRep
         if (meshNode != null) {
             group.ids.add(meshNode.nodeName.toInt())
             repository.getMeshManagerApi().updateGroupDb(group)
+            println("Thinkup: Confirmation node added")
         }
     }
 

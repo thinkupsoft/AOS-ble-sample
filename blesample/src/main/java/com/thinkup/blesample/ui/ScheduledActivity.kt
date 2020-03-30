@@ -24,6 +24,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
     val bleScheduleTraining: BleScheduleTraining by inject(named("PlanB"))
     private val adapter = RendererAdapter()
     private val list = mutableListOf<NodeEventStatus>()
+    private val activeNodes: Int by lazy { bleScheduleTraining.getNodes()?.filter { i -> i.isOnline }?.size ?: 0 }
 
     override fun title(): String = "Scheduled Training"
 
@@ -77,7 +78,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
                 )
             ),
             StarterMethod.INMEDIATELY,
-            false, false, 1, 0, false
+            false, false, 1, 0, false, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 
@@ -117,7 +118,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
                 )
             ),
             StarterMethod.COUNTDOWN,
-            false, false, 1, 0, true
+            false, false, 1, 0, true, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 
@@ -197,7 +198,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
 
             ),
             StarterMethod.DEACTIVATION,
-            true, true, 1, 0, false
+            true, true, 1, 0, false, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 
@@ -238,7 +239,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
                 )
             ),
             StarterMethod.COUNTDOWN,
-            false, false, 1, 0, false
+            false, false, 1, 0, false, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 

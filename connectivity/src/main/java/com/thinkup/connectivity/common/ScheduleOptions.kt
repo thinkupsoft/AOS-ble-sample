@@ -7,5 +7,6 @@ class ScheduleOptions(
     val endWithLight: Boolean,
     val distance: Int, // 0- Bajo, 1- Medio, 2- Alto
     val dimmer: Int, // 0- Bajo, 1- Medio, 2- Alto
-    val sound: Boolean = false
+    val sound: Boolean = false,
+    val nodesRequired: Int
 )

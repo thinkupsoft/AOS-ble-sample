@@ -167,7 +167,8 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
         }
     }
 
-    override fun setupTrainMessage(id: Int, dimmer: Int, gesture: Int, distance: Int, sound: Int, steps: List<TrainSetup>, ack: Boolean) {
+    override fun setupTrainMessage(id: Int, dimmer: Int, gesture: Int, distance: Int, sound: Int,
+                                   steps: List<TrainSetup>, activeNodes: Int, ack: Boolean) {
         val node = getNode(id)
         node?.let {
             val element: Element? = getElement(node)
@@ -179,11 +180,11 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
                         sendMessage(
                             node,
                             if (ack) NodeTrainSetupMessage(
-                                dimmer, gesture, distance, sound, steps,
+                                dimmer, gesture, distance, sound, activeNodes, steps,
                                 appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
                             )
                             else NodeTrainSetupMessageUnacked(
-                                dimmer, gesture, distance, sound, steps,
+                                dimmer, gesture, distance, sound, activeNodes, steps,
                                 appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
                             )
                         )
