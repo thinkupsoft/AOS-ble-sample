@@ -26,7 +26,7 @@ Tener un botón de START que mande los N start secuenciados
 class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventStatus?> {
 
     data class StartAction(var ids: String = BASIC_MASK, val timeout: Double, var count: Int = 1)
-
+    private val activeNodes: Int by lazy { bleNode.getNodes()?.filter { i -> i.isOnline }?.size ?: 0 }
     private val bleNode: BleNode by inject()
     private val adapter = RendererAdapter()
     private val adapterFinal = RendererAdapter()
@@ -107,11 +107,9 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
     private fun execute() {
         try {
             val steps = adapter.getItems() as List<TrainSetup>
-            var nodesQty = starts[0].count
-            starts.forEach { if (it.count> nodesQty) nodesQty = it.count }
             bleNode.setupTrainMessage(
                 nodeAddress.selectedItem.toString().toInt() + 1, dimmer.selectedItemPosition, PeripheralParams.BOTH, distance.selectedItemPosition,
-                if (sound.isChecked) PeripheralParams.BIP_START else PeripheralParams.NO_SOUND, steps, nodesQty
+                if (sound.isChecked) PeripheralParams.BIP_START else PeripheralParams.NO_SOUND, steps, activeNodes
             )
             addStart(nodeAddress.selectedItem.toString().toInt(), steps)
 
