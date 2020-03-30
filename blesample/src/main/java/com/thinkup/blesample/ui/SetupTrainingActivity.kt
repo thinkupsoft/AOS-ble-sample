@@ -172,7 +172,7 @@ class SetupTrainingActivity : BaseActivity(), EventObserver.Callback<NodeEventSt
         handler.removeCallbacks(runnable)
         events.clear()
         currentStep++
-        if (steps.size == currentStep) {
+        if (steps.size - 1 == currentStep) {
             clear()
             Toast.makeText(this, "Completed", Toast.LENGTH_SHORT).show()
         } else sendStart()
