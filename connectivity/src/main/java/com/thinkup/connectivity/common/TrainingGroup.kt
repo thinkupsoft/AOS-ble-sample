@@ -29,8 +29,9 @@ class TrainingGroup(
 
     fun missedStepFallback(timeout: Int, action: () -> Unit) {
         runnable = Runnable {
+            println("Thinkup: Missed step fallback ")
             Log.d("TKUP-NEURAL::", "Missed step fallback")
-            lastReceivedStep++
+//            lastReceivedStep++
             action.invoke()
         }
         handler.postDelayed(runnable!!, timeout + MISSED_STEP_TIMEOUT)

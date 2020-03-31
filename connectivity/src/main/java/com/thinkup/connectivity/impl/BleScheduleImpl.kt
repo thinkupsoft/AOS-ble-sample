@@ -60,15 +60,20 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
      * set initial config
      */
     override fun set(groups: List<Group>?, options: ScheduleOptions, callback: TrainingCallback) {
+        this.options = options
         // clear setup messages queue
         setupMessages.clear()
+        callback?.onSettingStart()
         // attach this class like mesh messages observer, to count the setup ack received (re-send if doesn't arrive)
         repository.getMeshMessageCallback().setObserver(messageObserver)
         // prevent don't send any extra message config
         useStartConfigMessage = false
         // call super [BleBaseTraining] to create TrainingGroups and get appkeys to messages
         super.set(groups, callback) {
+            this.options = options
             // iterate groups to create setup messages
+            println("Thinkup: groups size is ${this.groups.size}")
+
             this.groups.forEach { tg ->
                 // init a sized array to allocate setup messages
                 tg.starts = arrayOfNulls(options.steps.size)
@@ -100,8 +105,8 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                     addStart(tg, i, step, timeouts)
                 }
             }
+            startSetup()
         }
-        startSetup()
     }
 
     /**
@@ -155,7 +160,6 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
 
 
     private fun startSetup() {
-        callback?.onSettingStart()
         setupMessages.forEach {
             sendBroadcastMessage(it)
         }
@@ -170,7 +174,10 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                         sendBroadcastMessage(it)
                     }
                 }
-            }else stopTimer()
+            }else {
+                println("Thinkup: setup messages timeout")
+                stopTimer()
+            }
         }
         handler.postDelayed(runnable!!, timeout )
     }
@@ -181,6 +188,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     }
 
     override fun startTraining() = executeService {
+        println("Thinkup: Training starting")
         repository.isSending = true
         when (options.starterMethod) {
             StarterMethod.INMEDIATELY -> start()
@@ -193,38 +201,38 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     }
 
     override fun start() {
+        println("Thinkup: Training started")
+        println("Thinkup: groups size is ${this.groups.size}")
         this.groups.forEach {group->
+            println("Thinkup: sending start")
             sendStart(group.starts, group)
         }
+        callback?.onStartTraining()
     }
     private fun sendStart(starts :Array<StartAction?>, tg: TrainingGroup) {
+        println("Thinkup: start was sent")
         val action = starts[currentStep]
         if (action is StartAction) {
             sendBroadcastMessage(
                 NodeControlMessageUnacked(
                     ControlParams.START.toByte(),
-                    (action.timeout * 1000),
+                    action.timeout,
                     this.appkey,
                     model.modelId,
                     model.companyIdentifier,
                     action.ids
                 ))
-            tg.missedStepFallback((action.timeout * 1000),{
-                sendBroadcastMessage(
-                NodeControlMessageUnacked(
-                    ControlParams.START.toByte(),
-                    (action.timeout * 1000),
-                    this.appkey,
-                    model.modelId,
-                    model.companyIdentifier,
-                    action.ids
-                ))})
+            tg.missedStepFallback(action.timeout){
+                println("Thinkup: hit response timeout ${action.timeout}")
+                onPost(NodeEventStatus(EventType.TIMEOUT, action.timeout, tg.group.address))
+            }
         }
     }
     //Return true iff all setup responses were received
     private fun allSetupResponsesReceived(): Boolean{
         val notReceivedMsg = setupMessages.find { !it.received }
         return notReceivedMsg == null
+        return true
     }
 
 
@@ -236,23 +244,23 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
             start()
         } else if (e is NodeEventStatus && (e.eventType == EventType.HIT || e.eventType == EventType.TIMEOUT)) {
             Log.d("TKUP-NEURAL::EVE", "$e")
-            trainingGroup.forEach { tg ->
-                val group = tg.group
-                if (group.isFromThis(e.srcAddress)) {
+            println("Thinkup: HIT or TIMEOUT EVENT")
+            this.groups.forEach { group ->
+                if ((group.isFromThis(e.srcAddress))  || (group.address == e.address) ){
+
                     Log.d("TKUP-NEURAL::EVE", "Group :: ${group.group.name}")
-                    tg.steps[group.currentStep].actual++
                     val node = getNode(e.srcAddress)
                     callback?.onAction(group.group, node, e, e.eventType, e.value.toLong())
-                    if (tg.steps[group.currentStep].isCompleted()) {
+                    group.starts[group.currentStep]!!.eventsReceived++
+                    if (group.starts[group.currentStep]?.count == group.starts[group.currentStep]?.eventsReceived ){
                         Log.d("TKUP-NEURAL::EVE", "Completed:: ${group.currentStep}")
                         group.currentStep++
                         group.lastReceivedStep++
                         Log.d("TKUP-NEURAL::EVE", "Starting:: ${group.currentStep}")
                         group.stopFallback()
-                        sendStart(tg.group.starts, group)
-
+                        sendStart(group.starts, group)
                     }
-                    if (group.currentStep == tg.steps.size) ended++
+                    if (group.currentStep == group.starts.size) ended++
                     Log.d("TKUP-NEURAL::EVE", "Ended:: $ended")
                 }
             }

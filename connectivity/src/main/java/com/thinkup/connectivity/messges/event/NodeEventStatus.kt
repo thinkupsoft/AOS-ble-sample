@@ -13,10 +13,10 @@ import java.util.*
 import kotlin.math.abs
 
 class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(accessMessage), ComparableEvent.ComparableLiveData {
-
-    constructor(eventType: EventType, value: Int = 0): this(AccessMessage()) {
+    constructor(eventType: EventType, value: Int = 0, address: Int): this(AccessMessage()) {
         this.eventType = eventType
         this.value = value
+        this.address = address
     }
 
     init {
@@ -25,6 +25,7 @@ class NodeEventStatus(accessMessage: AccessMessage) : GenericStatusMessage(acces
     }
 
     // 5 bytes
+    var address : Int = 0
     var eventType: EventType? = null
     var value: Int = 0 // TIME_SPENT (ms) or TIME_SPENT (ms)
     var id: Int = 0

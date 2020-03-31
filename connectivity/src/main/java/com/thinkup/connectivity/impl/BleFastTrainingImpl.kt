@@ -28,11 +28,13 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     @Synchronized
     override fun onPost(eventStatus: NodeEventStatus?) {
         var ended = 0
+        println("Thinkup: HIT or TIMEOUT EVENT")
         Log.d("TKUP::", eventStatus.toString())
         if (eventStatus != null) {
             if (eventStatus.eventType == EventType.HIT || eventStatus.eventType == EventType.TIMEOUT) {
                 groups.forEach { group ->
-                    if (group.isFromThis(eventStatus.srcAddress) && group.currentStep > group.lastReceivedStep) {
+                    group.stopFallback()
+                    if ((group.isFromThis(eventStatus.srcAddress)|| (group.address == eventStatus.address)) && group.currentStep > group.lastReceivedStep) {
                         Log.d("TKUP::", "Group = ${group.address}")
                         group.lastReceivedStep++
                         stepG(group)
@@ -94,6 +96,8 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
             ids.add(group.nodeIds.random())
             color = options.colors.random()
             shape = options.shapes.random()
+            group.missedStepFallback(options.timeout){onPost(NodeEventStatus(eventType = EventType.TIMEOUT, value = options.timeout,address =  group.address))}
+
         }
         sendBroadcastMessage(
             NodeStepPeripheralMessageUnacked(
@@ -114,6 +118,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         sendBroadcastMessage(messsage, true)
         delay(REPLICATE_DELAY)
         sendBroadcastMessage(messsage, true)
+
     }
 
     @Synchronized
@@ -142,6 +147,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
             sendBroadcastMessage(messsage, true)
             delay(REPLICATE_DELAY)
             sendBroadcastMessage(messsage, true)
+            group.missedStepFallback(options.timeout){onPost(NodeEventStatus(eventType = EventType.TIMEOUT, value = options.timeout, address =  group.address))}
         }
     }
 

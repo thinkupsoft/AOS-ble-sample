@@ -177,15 +177,15 @@ class BleNodeImpl(context: Context, setting: BleSetting, repository: NrfMeshRepo
                 if (model != null) {
                     val appKey = getAppKey(model.boundAppKeyIndexes[0])
                     appKey?.let {
-                        sendMessage(
-                            node,
+                        sendBroadcastMessage(
+
                             if (ack) NodeTrainSetupMessage(
-                                dimmer, gesture, distance, sound, activeNodes, steps,
-                                appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                                dimmer, gesture, distance, sound, activeNodes,steps,
+                                appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier,destination =  OpCodes.getUnicastMask(node.nodeName.toInt())
                             )
                             else NodeTrainSetupMessageUnacked(
-                                dimmer, gesture, distance, sound, activeNodes, steps,
-                                appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier
+                                dimmer, gesture, distance, sound,activeNodes, steps,
+                                appKey = appKey, modelId = model.modelId, compId = model.companyIdentifier,destination = OpCodes.getUnicastMask(node.nodeName.toInt())
                             )
                         )
                     }
