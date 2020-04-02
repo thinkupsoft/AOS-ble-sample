@@ -10,6 +10,7 @@ import com.thinkup.connectivity.messges.*
 import com.thinkup.connectivity.messges.control.NodeControlMessageUnacked
 import com.thinkup.connectivity.messges.peripheral.NodePrePeripheralMessageUnacked
 import com.thinkup.connectivity.messges.peripheral.NodeStepPeripheralMessageUnacked
+import com.thinkup.connectivity.messges.setup.TrainSetup
 import kotlinx.coroutines.delay
 import no.nordicsemi.android.meshprovisioner.ApplicationKey
 import no.nordicsemi.android.meshprovisioner.Group
