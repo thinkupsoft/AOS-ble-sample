@@ -64,7 +64,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
                 ),
                 StepOption(
                     listOf(
-                        //StepNodeConfig(0, listOf(ShapeParams.X, ShapeParams.ARROW_DOWN), ColorParams.COLOR_BLUE, PeripheralParams.LED_PERMANENT),
+                        StepNodeConfig(0, listOf(ShapeParams.CROSS, ShapeParams.ARROW_DOWN), ColorParams.COLOR_BLUE, PeripheralParams.LED_PERMANENT),
                         StepNodeConfig(1, listOf(ShapeParams.LETTER_B), ColorParams.COLOR_WITHE, PeripheralParams.LED_PERMANENT)
                     ),
                     6000, 100

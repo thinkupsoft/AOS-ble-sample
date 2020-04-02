@@ -28,7 +28,15 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     private val setupMessages = mutableListOf<NodeTrainSetupMessage>()
     private var waitingDeactivation = false
     private val handler = Handler(Looper.getMainLooper())
-    private var runnable: Runnable? = null
+    private var runnable: Runnable = Runnable {
+        if (!allSetupResponsesReceived()){
+            startSetup()
+        }else {
+            println("Thinkup: setup messages timeout")
+            stopTimer()
+            repository.getMeshMessageCallback().removeObserver()
+        }
+    }
     private var currentStep = 0
     private var ended = 0
     private var stepTimeoutAchieved = false
@@ -51,6 +59,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                 if (allSetupResponsesReceived()){
                     callback?.onSettingComplete()
                     stopTimer()
+                    repository.getMeshMessageCallback().removeObserver()
                     startTraining()
                 }
             }
@@ -171,22 +180,13 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         }
         startTimer(SETUP_TIMEOUT)
     }
-    //Starts the timer to check the timeout of receiving all the messages from the setupMesage
+    //Starts the timer to check the timeout of receiving all the messages from the setupMessage
     private fun startTimer(timeout: Long){
-        runnable = Runnable {
-            if (!allSetupResponsesReceived()){
-                startSetup()
-            }else {
-                println("Thinkup: setup messages timeout")
-                stopTimer()
-            }
-        }
-        handler.postDelayed(runnable!!, timeout )
+        handler.postDelayed(runnable, timeout )
     }
 
     private fun stopTimer(){
         handler.removeCallbacks(runnable)
-        runnable = null
     }
 
     override fun startTraining() = executeService {
@@ -274,10 +274,10 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                     }
                     if (!stepTimeoutAchieved)
                         group.starts[group.currentStep]!!.eventsReceived++
-                    if (group.starts[group.currentStep]?.count == group.starts[group.currentStep]?.eventsReceived ){
+                    if (group.starts[group.currentStep]!!.count <= group.starts[group.currentStep]!!.eventsReceived ){
                         stepCompleted(group)
                     }
-                    if ((group.currentStep == group.starts.size - 1) || ((options.endWithLight) && (group.currentStep == group.starts.size - 2))) ended++
+                    if ((group.currentStep == group.starts.size) || ((options.endWithLight) && (group.currentStep == group.starts.size - 1))) ended++
                     Log.d("TKUP-NEURAL::EVE", "Ended:: $ended")
                 }
             }
@@ -299,7 +299,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     override fun stopTraining() {
         finish()
     }
-
+    private var lastLightSent = false
 
     override fun finish() {
         Log.d("TKUP-NEURAL::", "Finish")
@@ -308,7 +308,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         if (groupsnitialized()) {
             groups.forEach { group ->
                 group.stopFallback()
-                if (options.endWithLight) {
+                if (options.endWithLight  && !lastLightSent) {
                     group.currentStep = group.starts.size - 1
                     sendStart(group.starts, group)
                 }
