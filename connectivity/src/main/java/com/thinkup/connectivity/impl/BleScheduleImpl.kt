@@ -31,9 +31,10 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     private var runnable: Runnable? = null
     private var currentStep = 0
     private var ended = 0
-
+    private var stepTimeoutAchieved = false
     companion object {
-        const val SETUP_TIMEOUT = 400L
+        const val SETUP_TIMEOUT = 2000L
+        const val DEACTIVATION_TIMEOUT = 60000
     }
 
     override fun getDimmerValue(): Int = options.dimmer
@@ -66,6 +67,8 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         callback?.onSettingStart()
         // attach this class like mesh messages observer, to count the setup ack received (re-send if doesn't arrive)
         repository.getMeshMessageCallback().setObserver(messageObserver)
+        //attach this class like events observer, to receive hit or timeout of each step
+        repository.getTrainingMessageCallback().setObserver(this)
         // prevent don't send any extra message config
         useStartConfigMessage = false
         // call super [BleBaseTraining] to create TrainingGroups and get appkeys to messages
@@ -94,8 +97,10 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                         }
                         //add white circle to deactivate
                         StarterMethod.DEACTIVATION -> {
-                            deactivationMessage(step, timeouts)
-                            stepIndex = 1
+                            if (index == 0) { //show deactivation circle only in the first node
+                                deactivationMessage(step, timeouts)
+                                stepIndex = 1
+                            }
                         }
                     }
                     options.steps.forEachIndexed { indexSo, so ->
@@ -152,24 +157,17 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         repository.getTrainingMessageCallback().setObserver(this)
         waitingDeactivation = true
             steps.add(TrainSetup(ShapeParams.CIRCLE, ColorParams.COLOR_WITHE, PeripheralParams.LED_PERMANENT, 0))
-            timeouts.add(60000)
+            timeouts.add(DEACTIVATION_TIMEOUT)
 
     }
 
-    private fun stopDeactivation() {
-        bulkMessaging(this.groups) {
-            sendBroadcastMessage(
-                NodeControlMessageUnacked(
-                    ControlParams.STOP.toByte(), 0, appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(it.group.ids)
-                )
-            )
-        }
-    }
 
-
-    private fun startSetup() {
+    private fun startSetup() = executeService{
         setupMessages.forEach {
-            sendBroadcastMessage(it)
+            if (!it.received) {
+                sendBroadcastMessage(it)
+                delay(100)
+            }
         }
         startTimer(SETUP_TIMEOUT)
     }
@@ -177,11 +175,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     private fun startTimer(timeout: Long){
         runnable = Runnable {
             if (!allSetupResponsesReceived()){
-                setupMessages.forEach {
-                    if (!it.received){
-                        sendBroadcastMessage(it)
-                    }
-                }
+                startSetup()
             }else {
                 println("Thinkup: setup messages timeout")
                 stopTimer()
@@ -218,7 +212,6 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
 
     override fun start() {
         println("Thinkup: Training started")
-        println("Thinkup: groups size is ${this.groups.size}")
         this.groups.forEach {group->
             println("Thinkup: sending start")
             sendStart(group.starts, group)
@@ -240,6 +233,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                 ))
             tg.missedStepFallback(action.timeout){
                 println("Thinkup: hit response timeout ${action.timeout}")
+                stepTimeoutAchieved = true
                 onPost(NodeEventStatus(EventType.TIMEOUT, action.timeout, tg.group.address))
             }
         }
@@ -258,27 +252,30 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
             println("Thinkup: HIT or TIMEOUT EVENT")
             this.groups.forEach { group ->
                 if ((group.isFromThis(e.srcAddress))  || (group.address == e.address) ){
-
+                    group.stopFallback()
                     Log.d("TKUP-NEURAL::EVE", "Group :: ${group.group.name}")
                     val node = getNode(e.srcAddress)
                     val isInCountDown = (options.starterMethod == StarterMethod.COUNTDOWN) && (group.currentStep < 3)
                     val isDeactivation = ((options.starterMethod == StarterMethod.DEACTIVATION) && (group.currentStep < 1))
                     if ((!isInCountDown) && (!isDeactivation)){
-                        callback?.onAction(group.group, node, e, e.eventType, e.value.toLong())
+                        if (stepTimeoutAchieved){
+                            val eventsRemaining  = ((group.starts[group.currentStep]!!.count) - (group.starts[group.currentStep]!!.eventsReceived))
+                            for (i in 1..eventsRemaining){
+                                callback?.onAction(group.group, node, e, e.eventType, e.value.toLong())
+                                group.starts[group.currentStep]!!.eventsReceived++
+                            }
+                            stepTimeoutAchieved = false
+                        }else {
+                            callback?.onAction(group.group, node, e, e.eventType, e.value.toLong())
+                        }
                     }
                     if (isDeactivation){
                         waitingDeactivation = false
-                        stopDeactivation()
                     }
-                    group.starts[group.currentStep]!!.eventsReceived++
+                    if (!stepTimeoutAchieved)
+                        group.starts[group.currentStep]!!.eventsReceived++
                     if (group.starts[group.currentStep]?.count == group.starts[group.currentStep]?.eventsReceived ){
-                        Log.d("TKUP-NEURAL::EVE", "Completed:: ${group.currentStep}")
-                        group.currentStep++
-                        group.lastReceivedStep++
-                        Log.d("TKUP-NEURAL::EVE", "Starting:: ${group.currentStep}")
-                        group.stopFallback()
-                        if (group.currentStep < group.starts.size)
-                            sendStart(group.starts, group)
+                        stepCompleted(group)
                     }
                     if ((group.currentStep == group.starts.size - 1) || ((options.endWithLight) && (group.currentStep == group.starts.size - 2))) ended++
                     Log.d("TKUP-NEURAL::EVE", "Ended:: $ended")
@@ -287,6 +284,17 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         }
         if (ended == groups.size) finish()
     }
+
+    private fun stepCompleted(group: TrainingGroup) {
+        Log.d("TKUP-NEURAL::EVE", "Completed:: ${group.currentStep}")
+        group.currentStep++
+        group.lastReceivedStep++
+        Log.d("TKUP-NEURAL::EVE", "Starting:: ${group.currentStep}")
+        if (group.currentStep < group.starts.size) {
+            sendStart(group.starts, group)
+        }
+    }
+
 
     override fun stopTraining() {
         finish()
