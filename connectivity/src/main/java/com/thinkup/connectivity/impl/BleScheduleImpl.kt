@@ -36,7 +36,6 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
             repository.getMeshMessageCallback().removeObserver()
         }
     }
-    private var currentStep = 0
     private var ended = 0
     private var stepTimeoutAchieved = false
     companion object {
@@ -59,7 +58,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                     callback?.onSettingComplete()
                     stopTimer()
                     repository.getMeshMessageCallback().removeObserver()
-                    startTraining()
+//                    startTraining()
                 }
             }
         }
@@ -72,7 +71,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         this.options = options
         // clear setup messages queue
         setupMessages.clear()
-        callback?.onSettingStart()
+        callback.onSettingStart()
         // attach this class like mesh messages observer, to count the setup ack received (re-send if doesn't arrive)
         repository.getMeshMessageCallback().setObserver(messageObserver)
         //attach this class like events observer, to receive hit or timeout of each step
