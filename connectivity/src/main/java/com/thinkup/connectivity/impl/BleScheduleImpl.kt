@@ -88,7 +88,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
 
             this.groups.forEach { tg ->
                 // init a sized array to allocate setup messages
-                tg.starts = arrayOfNulls(options.steps.size)
+                tg.starts = mutableListOf()
                 val group = tg.group
                 // iterate group nodes by index
                 group.ids.forEachIndexed { index, i ->
@@ -157,7 +157,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                 it.count = it.count + 1
             } ?: run {
                 // create a new StartAction
-                group.starts[trainSetup.stepIndex] = StartAction(OpCodes.getMask(nodeId, BASIC_MASK), timeouts[index])
+                group.starts.add(trainSetup.stepIndex, StartAction(OpCodes.getMask(nodeId, BASIC_MASK), timeouts[index]))
             }
         }
     }
@@ -216,9 +216,10 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
             println("Thinkup: sending start")
             sendStart(group.starts, group)
         }
-        callback?.onStartTraining()
+        if (options.starterMethod == StarterMethod.INMEDIATELY)
+            callback?.onStartTraining()
     }
-    private fun sendStart(starts :Array<StartAction?>, tg: TrainingGroup) {
+    private fun sendStart(starts :MutableList<StartAction?>, tg: TrainingGroup) {
         println("Thinkup: start was sent")
         val action = starts[tg.currentStep]
         if (action is StartAction) {
@@ -268,12 +269,21 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                         }else {
                             callback?.onAction(group.group, node, e, e.eventType, e.value.toLong())
                         }
+                    }else{
+                        if (isDeactivation){
+                            //Node was deactivated
+                            callback?.onStartTraining()
+                        }else{
+                            if (group.currentStep == 2) {
+                                //Countdown finished
+                                callback?.onStartTraining()
+                            }
+                        }
                     }
                     if (isDeactivation){
                         waitingDeactivation = false
                     }
-                    if (!stepTimeoutAchieved)
-                        group.starts[group.currentStep]!!.eventsReceived++
+                    group.starts[group.currentStep]!!.eventsReceived++
                     if (group.starts[group.currentStep]!!.count <= group.starts[group.currentStep]!!.eventsReceived ){
                         stepCompleted(group)
                     }
