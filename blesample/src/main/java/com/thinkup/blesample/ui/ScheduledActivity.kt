@@ -78,7 +78,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
                 )
             ),
             StarterMethod.INMEDIATELY,
-            false, false, 1, 0, false, activeNodes
+            false, false, 1, 5, false, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 
@@ -118,7 +118,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
                 )
             ),
             StarterMethod.INMEDIATELY,
-            false, false, 1, 0, true, activeNodes
+            false, false, 1, 5, true, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 
@@ -198,7 +198,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
 
             ),
             StarterMethod.INMEDIATELY,
-            true, true, 1, 0, false, activeNodes
+            true, true, 1, 5, false, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 
@@ -239,7 +239,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
                 )
             ),
             StarterMethod.INMEDIATELY,
-            false, false, 1, 0, false, activeNodes
+            false, false, 1, 5, false, activeNodes
         )
         val groups = bleScheduleTraining.getGroups().value!!
 

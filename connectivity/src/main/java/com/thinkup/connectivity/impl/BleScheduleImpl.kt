@@ -24,11 +24,10 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     BleScheduleTraining, EventObserver.Callback<NodeEventStatus?> {
 
     private lateinit var options: ScheduleOptions
-//    private lateinit var trainingGroup: List<GroupSteps>
     private val setupMessages = mutableListOf<NodeTrainSetupMessage>()
     private var waitingDeactivation = false
     private val handler = Handler(Looper.getMainLooper())
-    private var runnable: Runnable = Runnable {
+    private val runnable: Runnable = Runnable {
         if (!allSetupResponsesReceived()){
             startSetup()
         }else {
