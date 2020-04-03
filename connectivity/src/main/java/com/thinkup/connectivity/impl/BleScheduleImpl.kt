@@ -55,10 +55,9 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                 val msg = setupMessages.find { it.destination?.get(e.src - 1)?.toInt() == 1 }
                 msg?.received = true
                 if (allSetupResponsesReceived()){
-                    callback?.onSettingComplete()
                     stopTimer()
                     repository.getMeshMessageCallback().removeObserver()
-//                    startTraining()
+                    startTraining()
                 }
             }
         }

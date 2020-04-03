@@ -94,6 +94,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
             delay(200)
         }
         repository.isSending = false
+        callback.onSettingComplete()
     }
 
     protected suspend fun countdown() {
