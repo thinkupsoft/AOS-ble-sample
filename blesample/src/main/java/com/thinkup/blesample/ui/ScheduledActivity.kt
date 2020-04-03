@@ -257,7 +257,7 @@ class ScheduledActivity : BaseActivity(), TrainingCallback {
     }
 
     override fun onSettingComplete() {
-//        bleScheduleTraining.startTraining()
+        bleScheduleTraining.startTraining()
     }
 
     override fun onCountdown() {
