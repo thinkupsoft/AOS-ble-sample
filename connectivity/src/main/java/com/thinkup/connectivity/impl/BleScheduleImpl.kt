@@ -19,6 +19,7 @@ import no.nordicsemi.android.meshprovisioner.transport.MeshMessage
 import android.os.Handler
 import android.util.Log
 import com.thinkup.connectivity.messges.control.NodeControlMessage
+import com.thinkup.connectivity.messges.peripheral.NodePeripheralMessageStatus
 
 class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMeshRepository) : BleBaseTraining(context, setting, repository),
     BleScheduleTraining, EventObserver.Callback<NodeEventStatus?> {
@@ -26,6 +27,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     private lateinit var options: ScheduleOptions
     private val setupMessages = mutableListOf<NodeTrainSetupMessage>()
     private var waitingDeactivation = false
+    private var lastLightSent = false
     private val handler = Handler(Looper.getMainLooper())
     private val runnable: Runnable = Runnable {
         if (!allSetupResponsesReceived()){
@@ -50,9 +52,9 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     private val messageObserver = object : EventObserver.Callback<MeshMessage?> {
         override fun onPost(e: MeshMessage?) {
             Log.d("TKUP-NEURAL::EVE", "$e")
-            if (e is MeshMessage) {
+            if ((e is MeshMessage) && (e is NodePeripheralMessageStatus)) {
                 //Gets the message that was send to the node with the same srcAddress by checking in the mask of the message
-                val msg = setupMessages.find { it.destination?.get(e.src - 1)?.toInt() == 1 }
+                val msg = setupMessages.find { it.destination?.get(e.src - 1)!!.toString().toInt() == 1 }
                 msg?.received = true
                 if (allSetupResponsesReceived()){
                     callback?.onSettingComplete()
@@ -86,7 +88,19 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
 
             this.groups.forEach { tg ->
                 // init a sized array to allocate setup messages
-                tg.starts = mutableListOf()
+             var arraySize = options.steps.size
+                //Starter methods are consider as steps in TrainSetup
+                if (options.starterMethod == StarterMethod.COUNTDOWN){
+                    arraySize += 3
+                }else{
+                    if (options.starterMethod == StarterMethod.DEACTIVATION ){
+                        arraySize+= 1
+                    }
+                }
+                if (options.endWithLight) {
+                    arraySize += 1
+                }
+                tg.starts = arrayOfNulls(arraySize)
                 val group = tg.group
                 // iterate group nodes by index
                 group.ids.forEachIndexed { index, i ->
@@ -155,7 +169,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                 it.count = it.count + 1
             } ?: run {
                 // create a new StartAction
-                group.starts.add(trainSetup.stepIndex, StartAction(OpCodes.getMask(nodeId, BASIC_MASK), timeouts[index]))
+                group.starts[trainSetup.stepIndex] =  StartAction(OpCodes.getMask(nodeId, BASIC_MASK), timeouts[index])
             }
         }
     }
@@ -217,7 +231,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         if (options.starterMethod == StarterMethod.INMEDIATELY)
             callback?.onStartTraining()
     }
-    private fun sendStart(starts :MutableList<StartAction?>, tg: TrainingGroup) {
+    private fun sendStart(starts :Array<StartAction?>, tg: TrainingGroup) {
         println("Thinkup: start was sent")
         val action = starts[tg.currentStep]
         if (action is StartAction) {
@@ -299,7 +313,29 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
         group.lastReceivedStep++
         Log.d("TKUP-NEURAL::EVE", "Starting:: ${group.currentStep}")
         if (group.currentStep < group.starts.size) {
+            if ((options.endWithLight) && (group.currentStep == group.starts.size -1)){
+                lastLightSent = true
+                sendLedOnMsg(group.starts, group)
+            }
             sendStart(group.starts, group)
+        }
+    }
+
+    //Set LED ON with last light to indicate the training was finished
+    private fun sendLedOnMsg(starts: Array<StartAction?>, tg: TrainingGroup) {
+        println("Thinkup: start was sent")
+        val action = starts[tg.currentStep]
+        if (action is StartAction) {
+            sendBroadcastMessage(
+                NodeControlMessageUnacked(
+                    ControlParams.SET_LED_ON.toByte(),
+                    action.timeout,
+                    this.appkey,
+                    model.modelId,
+                    model.companyIdentifier,
+                    action.ids
+                )
+            )
         }
     }
 
@@ -307,7 +343,6 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     override fun stopTraining() {
         finish()
     }
-    private var lastLightSent = false
 
     override fun finish() {
         Log.d("TKUP-NEURAL::", "Finish")

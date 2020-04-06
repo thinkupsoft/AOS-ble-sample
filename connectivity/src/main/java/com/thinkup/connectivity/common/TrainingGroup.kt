@@ -13,7 +13,7 @@ class TrainingGroup(
     val nodeIds: List<Int>,
     var lastReceivedStep: Int,
     var currentStep: Int,
-    var starts: MutableList<StartAction?> = mutableListOf()
+    var starts: Array<StartAction?> = emptyArray()
 ) {
 
     companion object {

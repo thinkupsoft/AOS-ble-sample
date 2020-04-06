@@ -20,8 +20,7 @@ import org.koin.android.ext.android.inject
 import org.koin.core.qualifier.named
 
 class ScheduledActivity : BaseActivity(), TrainingCallback {
-
-    val bleScheduleTraining: BleScheduleTraining by inject(named("PlanB"))
+    private val bleScheduleTraining: BleScheduleTraining by inject(named("PlanB"))
     private val adapter = RendererAdapter()
     private val list = mutableListOf<NodeEventStatus>()
     private val activeNodes: Int by lazy { bleScheduleTraining.getNodes()?.filter { i -> i.isOnline }?.size ?: 0 }
