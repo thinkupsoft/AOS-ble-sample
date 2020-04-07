@@ -19,7 +19,6 @@ object ConnectivityDiWrapper {
         factory<BleGroup> { BleGroupImpl(get(), get(), get()) }
         single<BleSession> { BleSessionImpl(get(), get(), get(), get()) }
         factory<BleFastTraining> { BleFastTrainingImpl(get(), get(), get()) }
-        factory<BleScheduleTraining>(named("PlanA")) { BleScheduleTrainingImpl(get(), get(), get()) }
         factory<BleScheduleTraining>(named("PlanB")) { BleScheduleImpl(get(), get(), get()) }
     }
 

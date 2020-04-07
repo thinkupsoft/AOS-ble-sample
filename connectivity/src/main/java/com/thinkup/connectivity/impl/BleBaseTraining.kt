@@ -96,28 +96,12 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
         repository.isSending = false
     }
 
-    protected suspend fun countdown() {
+    //add traffic lights steps to the steps list and timeouts
+    protected fun countdown(steps: MutableList<TrainSetup>, timeouts: MutableList<Int>) {
         for (i in 1..3) {
-            sendBroadcastMessage(
-                NodeStepPeripheralMessageUnacked(
-                    ShapeParams.CIRCLE, getCountdownColor(i), PeripheralParams.LED_PERMANENT,
-                    appkey, model.modelId, model.companyIdentifier, OpCodes.getGroupMask(allNodeIds.toList())
-                ), true
-            )
-            if (i == 1) {
-                // despues de circulo verde de countdown
-                delay(REPLICATE_DELAY)
-                sendBroadcastMessage(
-                    NodeControlMessageUnacked(
-                        ControlParams.SET_LED_ON.toByte(), NO_CONFIG, appkey,
-                        model.modelId, model.companyIdentifier, OpCodes.getGroupMask(allNodeIds.toList())
-                    ), true
-                )
-            }
-            // entre cada circulo de countdown
-            delay(1000 - if (i == 1) REPLICATE_DELAY else 0)
+            steps.add(TrainSetup(ShapeParams.CIRCLE, getCountdownColor(i), PeripheralParams.LED_PERMANENT, i - 1))
+            timeouts.add(1000)
         }
-        start()
     }
 
     protected fun getCountdownColor(index: Int): Int = when (index) {
@@ -128,5 +112,5 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
 
     protected fun checkInitialized() = !::appkey.isInitialized || !::model.isInitialized
 
-    protected fun groupsnitialized() = ::groups.isInitialized
+    protected fun groupsInitialized() = ::groups.isInitialized
 }

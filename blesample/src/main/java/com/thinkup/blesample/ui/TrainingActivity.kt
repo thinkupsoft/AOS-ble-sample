@@ -93,7 +93,8 @@ class TrainingActivity : BaseActivity(), TrainingCallback {
             selectedShapes, selectedColors,
             countdown.isChecked, if (ledmode.isChecked) PeripheralParams.LED_FAST_FLASH else PeripheralParams.LED_PERMANENT,
             distance.selectedItemPosition, dimmer.selectedItemPosition,
-            sound.isChecked, endlight.isChecked
+            sound.isChecked, endlight.isChecked,
+            nodesRequired = bleFastTraining.getNodes()?.filter { it.isOnline }?.size ?: 0
         )
         actualConfig.text = "ACTUAL CONFIG :: $options"
 

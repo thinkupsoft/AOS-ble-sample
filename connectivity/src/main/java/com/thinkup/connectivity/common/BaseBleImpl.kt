@@ -224,6 +224,41 @@ open class BaseBleImpl(protected val context: Context, protected val setting: Bl
         }
     }
 
+    fun autoOffLedMessage(
+        ids: String,
+        appkey: ApplicationKey,
+        modelId: Int,
+        companyId: Int,
+        timeout: Long = AUTO_OFF_LEDS
+    ) {
+        executeService {
+            delay(REPLICATE_DELAY)
+            sendBroadcastMessage(
+                NodeControlMessageUnacked(
+                    ControlParams.SET_LED_ON.toByte(),
+                    0,
+                    appkey,
+                    modelId,
+                    companyId,
+                    ids
+                )
+            )
+            TimeoutLiveData<Any?>(timeout, null)
+            {
+                sendBroadcastMessage(
+                    NodeControlMessageUnacked(
+                        ControlParams.SET_LED_OFF.toByte(),
+                        0,
+                        appkey,
+                        modelId,
+                        companyId,
+                        ids
+                    )
+                )
+            }
+        }
+    }
+
     private fun autoOffLedMessageBroadcast(
         id: Int,
         message: MeshMessage,
