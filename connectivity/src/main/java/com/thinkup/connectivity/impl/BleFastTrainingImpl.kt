@@ -22,7 +22,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
     BleFastTraining, EventObserver.Callback<NodeEventStatus?> {
 
     companion object {
-        const val SETUP_TIMEOUT = 250L
+        const val SETUP_TIMEOUT = 600L
     }
 
     private lateinit var options: FastOptions

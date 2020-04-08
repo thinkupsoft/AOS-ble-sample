@@ -32,7 +32,7 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     private var stepTimeoutAchieved = false
 
     companion object {
-        const val SETUP_TIMEOUT = 250L
+        const val SETUP_TIMEOUT = 600L
         const val DEACTIVATION_TIMEOUT = 60000
     }
 
@@ -54,7 +54,6 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
                     sendSetup(it)
                 } ?: run {
                     callback?.onSettingComplete()
-                    startTraining()
                 }
             }
         }
