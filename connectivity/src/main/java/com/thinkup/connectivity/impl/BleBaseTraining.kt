@@ -25,6 +25,9 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
     protected lateinit var groups: List<TrainingGroup>
     protected var useStartConfigMessage = true
 
+    companion object {
+        const val COUNTDOWN_TIMEOUT = 1000
+    }
     abstract fun start()
     abstract fun finish()
     abstract fun getDimmerValue(): Int
@@ -100,7 +103,7 @@ abstract class BleBaseTraining(context: Context, setting: BleSetting, repository
     protected fun countdown(steps: MutableList<TrainSetup>, timeouts: MutableList<Int>) {
         for (i in 1..3) {
             steps.add(TrainSetup(ShapeParams.CIRCLE, getCountdownColor(i), PeripheralParams.LED_PERMANENT, i - 1))
-            timeouts.add(1000)
+            timeouts.add(COUNTDOWN_TIMEOUT)
         }
     }
 

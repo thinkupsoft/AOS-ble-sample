@@ -119,7 +119,6 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
         // clear setup messages queue
         setupMessages.clear()
         callback.onSettingStart()
-        repository.getTrainingMessageCallback().setObserver(this)
         // attach this class like mesh messages observer, to count the setup ack received (re-send if doesn't arrive)
         repository.getMeshMessageCallback().setObserver(messageObserver)
         //attach this class like events observer, to receive hit or timeout of each step
@@ -139,25 +138,34 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                 }
                 tg.starts = arrayOfNulls(arraySize)
                 val group = tg.group
-                // iterate group nodes by index
-                group.ids.forEachIndexed { index, i ->
-                    // init steps and timeout's step lists
-                    val step = mutableListOf<TrainSetup>()
-                    val timeouts = mutableListOf<Int>()
-                    // iterate steps by index
-                    var stepIndex = 0
-                    if (options.startWithCountdown) {
-                        //add traffic lights steps to the steps list and timeouts
-                        countdown(step, timeouts)
-                        stepIndex = 3
+                // init steps and timeout's step lists
+                val step = mutableListOf<TrainSetup>()
+                val timeouts = mutableListOf<Int>()
+                // iterate steps by index
+                var stepIndex = 0
+                if (options.startWithCountdown) {
+                    //add traffic lights steps to the steps list and timeouts
+                    countdown(step, timeouts)
+                    stepIndex = 3
+                }
+                for (index in 0 until options.touches) {
+                    step.add(TrainSetup(options.shapes.random(), options.colors.random(), options.flashMode, index + stepIndex))
+                    timeouts.add(options.timeout)
+                }
+                val nodeSteps:  Array<MutableList<TrainSetup>> = Array(group.ids.size){ mutableListOf<TrainSetup>()}
+                if (options.startWithCountdown) {
+                    group.ids.forEachIndexed { index, i ->
+                        countdown(nodeSteps[index], timeouts)
                     }
-                    for (index in 0 until options.touches) {
-                        step.add(TrainSetup(options.shapes.random(), options.colors.random(), options.flashMode, index + stepIndex))
-                        timeouts.add(options.timeout)
-                    }
+                }
+                // random id node for each step
+               step.forEach {
+                   nodeSteps[group.ids.indexOf(group.ids.random())].add(it)
+               }
+                nodeSteps.forEachIndexed { index, nodeStep ->
                     if (options.endWithLight) {
                         //Add last white circle light to show when training is finished
-                        step.add(
+                        nodeStep.add(
                             TrainSetup(
                                 ShapeParams.CIRCLE,
                                 ColorParams.COLOR_WITHE,
@@ -167,7 +175,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                         )
                         timeouts.add(AUTO_OFF_LEDS.toInt())
                     }
-                    // create a setup message fot this node using the steps info and global config(dimmer,distance,etc)
+                    // create a setup message for this node using the steps info and global config(dimmer,distance,etc)
                     setupMessages.add(
                         NodeTrainSetupMessage(
                             options.dimmer,
@@ -175,15 +183,15 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                             options.distance,
                             if (options.sound) PeripheralParams.BIP_START_HIT else PeripheralParams.NO_SOUND,
                             options.nodesRequired,
-                            step,
+                            nodeStep,
                             appkey,
                             model.modelId,
                             model.companyIdentifier,
-                            OpCodes.getUnicastMask(i)
+                            OpCodes.getUnicastMask(group.ids[index])
                         )
                     )
                     // create (or modify if exist) a START message for this node for each step where it participate
-                    addStart(tg, i, step, timeouts)
+                    addStart(tg, group.ids[index], step)
                 }
             }
             startSetup()
@@ -194,7 +202,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
      * Create START message [NodeControlMessageUnacked] for each step
      * that message is associated to a group
      */
-    private fun addStart(group: TrainingGroup, nodeId: Int, steps: List<TrainSetup>, timeouts: List<Int>) {
+    private fun addStart(group: TrainingGroup, nodeId: Int, steps: List<TrainSetup>) {
         // fora each step, look for a START created or create a new message if not exist
         steps.forEachIndexed { index, trainSetup ->
             // get a step start
@@ -205,7 +213,10 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                 it.count = it.count + 1
             } ?: run {
                 // create a new StartAction
-                group.starts[trainSetup.stepIndex] = StartAction(OpCodes.getMask(nodeId, BASIC_MASK), timeouts[index])
+                group.starts[trainSetup.stepIndex] = StartAction(OpCodes.getMask(nodeId, BASIC_MASK),
+                    if (options.startWithCountdown && trainSetup.stepIndex < 3) COUNTDOWN_TIMEOUT else
+                        if (options.endWithLight && trainSetup.stepIndex == group.starts.size -1) AUTO_OFF_LEDS.toInt()
+                        else options.timeout)
             }
         }
     }
@@ -217,6 +228,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
 
     override fun startTraining() = executeService {
         repository.isSending = true
+        stopTimer()
         if (options.startWithCountdown)
             callback?.onCountdown()
         start()

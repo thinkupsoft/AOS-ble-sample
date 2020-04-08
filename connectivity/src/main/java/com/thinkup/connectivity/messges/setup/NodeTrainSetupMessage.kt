@@ -27,6 +27,11 @@ class NodeTrainSetupMessage(
         assembleMessageParameters()
     }
 
+    fun incrementTId() {
+        mParameters = byteArrayOf()
+        assembleMessageParameters()
+    }
+
     private fun getTotalSize() = (STEP_SIZE * steps.size) + FIXED_SIZE
 
     override fun assembleMessageParameters() {

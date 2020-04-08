@@ -203,7 +203,10 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
 
     //Starts the timer to check the timeout of receiving all the messages from the setupMessage
     private fun startTimer(msg: NodeTrainSetupMessage, timeout: Long) {
-        runnable = Runnable { sendSetup(msg) }
+        runnable = Runnable {
+            msg.incrementTId()
+            sendSetup(msg)
+        }
         handler.postDelayed(runnable, timeout)
     }
 
@@ -214,14 +217,11 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
     override fun startTraining() = executeService {
         println("Thinkup: Training starting")
         repository.isSending = true
-        when (options.starterMethod) {
-            StarterMethod.INMEDIATELY -> start()
-            StarterMethod.COUNTDOWN -> {
-                callback?.onCountdown()
-                start()
-            }
-            StarterMethod.DEACTIVATION -> start()
+        stopTimer()
+        if (options.starterMethod == StarterMethod.COUNTDOWN) {
+            callback?.onCountdown()
         }
+        start()
     }
 
     override fun start() {
