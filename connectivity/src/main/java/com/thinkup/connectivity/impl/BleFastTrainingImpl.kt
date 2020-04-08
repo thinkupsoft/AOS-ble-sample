@@ -191,7 +191,7 @@ class BleFastTrainingImpl(context: Context, setting: BleSetting, repository: Nrf
                         )
                     )
                     // create (or modify if exist) a START message for this node for each step where it participate
-                    addStart(tg, group.ids[index], step)
+                    addStart(tg, group.ids[index], nodeStep)
                 }
             }
             startSetup()
