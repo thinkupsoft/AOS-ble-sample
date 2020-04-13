@@ -225,10 +225,31 @@ class BleScheduleImpl(context: Context, setting: BleSetting, repository: NrfMesh
 
     override fun start() {
         println("Thinkup: Training started")
+        var timeout = 0
+        var mask = BASIC_MASK
         this.groups.forEach { group ->
-            println("Thinkup: sending start")
-            sendStart(group.starts, group)
+            val action = group.starts[0]
+            action?.let { action ->
+                timeout = action.timeout
+                val groupFirstStartMask = action.ids
+                groupFirstStartMask.forEachIndexed { index, c -> if (c.toString() == YES_BIT) mask = OpCodes.getMask(index, mask) }
+                group.missedStepFallback(action.timeout) {
+                    println("Thinkup: hit response timeout ${action.timeout}")
+                    stepTimeoutAchieved = true
+                    onPost(NodeEventStatus(EventType.TIMEOUT, action.timeout, group.group.address))
+                }
+            }
         }
+        sendBroadcastMessage(
+            NodeControlMessageUnacked(
+                ControlParams.START.toByte(),
+                timeout,
+                this.appkey,
+                model.modelId,
+                model.companyIdentifier,
+                mask
+            )
+        )
         if (options.starterMethod == StarterMethod.INMEDIATELY)
             callback?.onStartTraining()
     }

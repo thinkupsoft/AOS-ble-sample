@@ -4,6 +4,8 @@ const val NO_CONFIG = 0x00
 const val BROADCAST = 0xFFFF
 const val DYNAMIC_MASK = "111111111111"
 const val BASIC_MASK = "000000000000"
+const val YES_BIT = "1"
+const val NO_BIT = "0"
 
 object ControlParams {
     const val TURN_OFF = 0x01
